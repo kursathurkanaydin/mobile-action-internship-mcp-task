@@ -4,6 +4,36 @@ from mcp_task.mcp_instance import mcp
 from mcp_task.validation import InputValidationError, require_country_code, require_text, require_track_id
 
 
+class AppLookupError(Exception):
+    """A clean, user-facing error for an iTunes lookup that failed or found nothing."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+def _fetch_app_by_name(app_name: str, country: str) -> dict:
+    """Validate inputs and look up an app on the App Store by name."""
+    app_name = require_text(app_name, "app_name")
+    country = require_country_code(country, upper=False)
+
+    try:
+        response = httpx.get(
+            "https://itunes.apple.com/search",
+            params={"term": app_name, "entity": "software", "country": country, "limit": 1},
+            timeout=15,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise AppLookupError(f"Failed to search the App Store: {exc}") from exc
+
+    results = response.json().get("results", [])
+    if not results:
+        raise AppLookupError(f"No app found for '{app_name}' in storefront '{country}'")
+
+    return results[0]
+
+
 @mcp.tool
 def get_app_store_id(app_name: str, country: str = "us") -> dict:
     """Look up an app's numeric App Store id (trackId) by its name.
@@ -17,31 +47,37 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
         country: Two-letter App Store storefront code to search in, e.g. "us", "tr".
     """
     try:
-        app_name = require_text(app_name, "app_name")
-        country = require_country_code(country, upper=False)
-    except InputValidationError as exc:
+        app = _fetch_app_by_name(app_name, country)
+    except (InputValidationError, AppLookupError) as exc:
         return {"error": exc.message}
 
-    try:
-        response = httpx.get(
-            "https://itunes.apple.com/search",
-            params={"term": app_name, "entity": "software", "country": country, "limit": 1},
-            timeout=15,
-        )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        return {"error": f"Failed to search the App Store: {exc}"}
-
-    results = response.json().get("results", [])
-    if not results:
-        return {"error": f"No app found for '{app_name}' in storefront '{country}'"}
-
-    app = results[0]
     return {
         "app_id": app["trackId"],
         "name": app["trackName"],
         "url": app["trackViewUrl"],
     }
+
+
+def _fetch_app_by_track_id(track_id: int, country: str) -> dict:
+    """Validate inputs and look up an app on the App Store by trackId."""
+    track_id = require_track_id(track_id)
+    country = require_country_code(country, upper=False)
+
+    try:
+        response = httpx.get(
+            "https://itunes.apple.com/lookup",
+            params={"id": track_id, "country": country},
+            timeout=15,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise AppLookupError(f"Failed to look up the App Store id: {exc}") from exc
+
+    results = response.json().get("results", [])
+    if not results:
+        raise AppLookupError(f"No app found for trackId {track_id} in storefront '{country}'")
+
+    return results[0]
 
 
 @mcp.tool
@@ -56,26 +92,10 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
         country: Two-letter App Store storefront to look the app up in, e.g. "us", "tr".
     """
     try:
-        track_id = require_track_id(track_id)
-        country = require_country_code(country, upper=False)
-    except InputValidationError as exc:
+        app = _fetch_app_by_track_id(track_id, country)
+    except (InputValidationError, AppLookupError) as exc:
         return {"error": exc.message}
 
-    try:
-        response = httpx.get(
-            "https://itunes.apple.com/lookup",
-            params={"id": track_id, "country": country},
-            timeout=15,
-        )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        return {"error": f"Failed to look up the App Store id: {exc}"}
-
-    results = response.json().get("results", [])
-    if not results:
-        return {"error": f"No app found for trackId {track_id} in storefront '{country}'"}
-
-    app = results[0]
     return {
         "app_id": app["trackId"],
         "name": app["trackName"],
