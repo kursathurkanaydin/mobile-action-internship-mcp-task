@@ -2,6 +2,7 @@ import httpx
 import pycountry
 
 from mcp_task.mcp_instance import mcp
+from mcp_task.validation import InputValidationError, require_country_code, require_text, require_track_id
 
 
 @mcp.tool
@@ -16,6 +17,12 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
         app_name: The app's name as it appears on the App Store.
         country: Two-letter App Store storefront code to search in, e.g. "us", "tr".
     """
+    try:
+        app_name = require_text(app_name, "app_name")
+        country = require_country_code(country, upper=False)
+    except InputValidationError as exc:
+        return {"error": exc.message}
+
     try:
         response = httpx.get(
             "https://itunes.apple.com/search",
@@ -49,6 +56,12 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
         track_id: The app's numeric App Store id, e.g. 570060128.
         country: Two-letter App Store storefront to look the app up in, e.g. "us", "tr".
     """
+    try:
+        track_id = require_track_id(track_id)
+        country = require_country_code(country, upper=False)
+    except InputValidationError as exc:
+        return {"error": exc.message}
+
     try:
         response = httpx.get(
             "https://itunes.apple.com/lookup",

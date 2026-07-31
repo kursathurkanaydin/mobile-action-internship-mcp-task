@@ -1,5 +1,15 @@
 from mcp_task.ma_client import MobileActionAPIError, get
 from mcp_task.mcp_instance import mcp
+from mcp_task.validation import (
+    InputValidationError,
+    require_country_code,
+    require_date,
+    require_date_range,
+    require_device,
+    require_positive_int,
+    require_text,
+    require_track_id,
+)
 
 
 @mcp.tool
@@ -23,12 +33,18 @@ def get_keyword_ranking(
             available ranking day if omitted.
     """
     try:
+        track_id = require_track_id(track_id)
+        country_code = require_country_code(country_code)
+        keywords = require_text(keywords, "keywords")
+        if date is not None:
+            date = require_date(date, "date")
+
         data = get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/keywordrankings",
             params={"keywords": keywords, "date": date},
         )
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     return {"rankings": data}
 
@@ -56,12 +72,18 @@ def get_top_keywords(
         limit: Optional max number of keywords to return, e.g. 150.
     """
     try:
+        track_id = require_track_id(track_id)
+        country_code = require_country_code(country_code)
+        date = require_date(date, "date")
+        device = require_device(device, required=False)
+        limit = require_positive_int(limit, "limit")
+
         data = get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/top-keywords",
             params={"date": date, "device": device, "limit": limit},
         )
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     return {"top_keywords": data}
 
@@ -74,11 +96,17 @@ def fetch_keyword_ranking_history(
     end_date: str,
 ) -> list:
     """Shared fetch for App Store keyword ranking history, used by both the raw
-    data tool and the chart tool so they stay in sync on request shape.
+    data tool and the chart tool so they stay in sync on request shape and validation.
 
-    Raises MobileActionAPIError on failure; returns the raw list of per-day,
-    per-device {trackId, keyword, rank, countryCode, date, appKind} entries.
+    Raises InputValidationError on a bad input or MobileActionAPIError on failure;
+    returns the raw list of per-day, per-device {trackId, keyword, rank, countryCode,
+    date, appKind} entries.
     """
+    track_id = require_track_id(track_id)
+    country_code = require_country_code(country_code)
+    keyword = require_text(keyword, "keyword")
+    require_date_range(start_date, end_date, max_days=30)
+
     return get(
         f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
         params={"startDate": start_date, "endDate": end_date},
@@ -112,8 +140,8 @@ def get_keyword_ranking_history(
     """
     try:
         data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     return {"history": data}
 
@@ -132,12 +160,15 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
         keyword: A single keyword to get metadata for.
     """
     try:
+        country_code = require_country_code(country_code)
+        keyword = require_text(keyword, "keyword")
+
         data = get(
             f"/appstore-keyword-ranking/{country_code}/keyword-metadata",
             params={"keyword": keyword},
         )
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     return {"metadata": data}
 
@@ -157,12 +188,15 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
         keyword: A single keyword to find ranking apps for.
     """
     try:
+        country_code = require_country_code(country_code)
+        keyword = require_text(keyword, "keyword")
+
         data = get(
             f"/appstore-keyword-ranking/{country_code}/keyword-apps",
             params={"keyword": keyword},
         )
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     return {"apps": data}
 
@@ -205,12 +239,18 @@ def get_organic_keywords(
             Defaults to and is capped at 100 to avoid oversized responses.
     """
     try:
+        track_id = require_track_id(track_id)
+        country_code = require_country_code(country_code)
+        device = require_device(device, required=True)
+        date = require_date(date, "date")
+        limit = require_positive_int(limit, "limit")
+
         data = get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/{device}/organic-keywords",
             params={"date": date},
         )
-    except MobileActionAPIError as exc:
-        return {"error": exc.message, "status_code": exc.status_code}
+    except (InputValidationError, MobileActionAPIError) as exc:
+        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
 
     rankings = data.get("rankings", [])
     capped_limit = max(1, min(limit, _ORGANIC_KEYWORDS_MAX_LIMIT))
