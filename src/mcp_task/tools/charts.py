@@ -114,7 +114,4 @@ def plot_keyword_ranking_history(
 
     chart_url = publish_chart(buffer.getvalue())
 
-    return {
-        "chart_url": chart_url,
-        "markdown_link": f"[View the '{keyword}' ranking chart]({chart_url})",
-    }
+    return {"chart_url": chart_url}
