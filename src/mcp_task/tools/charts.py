@@ -9,8 +9,8 @@ matplotlib.use("Agg")  # headless: we only ever render to an in-memory PNG buffe
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from fastmcp.exceptions import ToolError
-from fastmcp.utilities.types import Image
 
+from mcp_task.chart_server import publish_chart
 from mcp_task.ma_client import MobileActionAPIError
 from mcp_task.mcp_instance import mcp
 from mcp_task.tools.keyword_services import fetch_keyword_ranking_history
@@ -28,7 +28,7 @@ def plot_keyword_ranking_history(
     keyword: str,
     start_date: str,
     end_date: str,
-) -> Image:
+) -> dict:
     """Render a line chart of an app's App Store ranking history for a keyword.
 
     Same underlying data as get_keyword_ranking_history, plotted as rank-over-time
@@ -36,6 +36,14 @@ def plot_keyword_ranking_history(
     wants to *see* a trend rather than read numbers (e.g. "graph app X's rank for
     keyword Y over the last month", "show me a chart of the ranking history").
     The date range should not exceed 30 days per request.
+
+    Returns a clickable URL (served from a local, loopback-only HTTP server)
+    that opens the chart PNG in a browser.
+
+    IMPORTANT: this URL is only useful if the user can see and click it, so
+    you MUST paste the exact returned chart_url into your reply to the user
+    as a markdown link, e.g. "[View the ranking chart]({chart_url})" — do not
+    just say the chart is ready without including the link itself.
 
     Args:
         track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).
@@ -104,4 +112,9 @@ def plot_keyword_ranking_history(
     fig.savefig(buffer, format="png")
     plt.close(fig)
 
-    return Image(data=buffer.getvalue(), format="png")
+    chart_url = publish_chart(buffer.getvalue())
+
+    return {
+        "chart_url": chart_url,
+        "markdown_link": f"[View the '{keyword}' ranking chart]({chart_url})",
+    }
