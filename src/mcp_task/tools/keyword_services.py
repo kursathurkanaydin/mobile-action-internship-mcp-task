@@ -66,6 +66,25 @@ def get_top_keywords(
     return {"top_keywords": data}
 
 
+def fetch_keyword_ranking_history(
+    track_id: int,
+    country_code: str,
+    keyword: str,
+    start_date: str,
+    end_date: str,
+) -> list:
+    """Shared fetch for App Store keyword ranking history, used by both the raw
+    data tool and the chart tool so they stay in sync on request shape.
+
+    Raises MobileActionAPIError on failure; returns the raw list of per-day,
+    per-device {trackId, keyword, rank, countryCode, date, appKind} entries.
+    """
+    return get(
+        f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
+        params={"startDate": start_date, "endDate": end_date},
+    )
+
+
 @mcp.tool
 def get_keyword_ranking_history(
     track_id: int,
@@ -80,7 +99,9 @@ def get_keyword_ranking_history(
     and end_date, inclusive. Use this when the user asks how a keyword's rank
     changed over time (e.g. "how has app X's rank for keyword Y trended over
     the last month"), as opposed to a single day's rank (use get_keyword_ranking
-    for that). The date range should not exceed 30 days per request.
+    for that). The date range should not exceed 30 days per request. If the user
+    wants to *see* the trend as a chart rather than read the raw numbers, use
+    plot_keyword_ranking_history instead.
 
     Args:
         track_id: The app's numeric App Store id (e.g. 366562751 for Clash of Clans).
@@ -90,10 +111,7 @@ def get_keyword_ranking_history(
         end_date: History end date, inclusive, in YYYY-MM-DD format.
     """
     try:
-        data = get(
-            f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
-            params={"startDate": start_date, "endDate": end_date},
-        )
+        data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
     except MobileActionAPIError as exc:
         return {"error": exc.message, "status_code": exc.status_code}
 
