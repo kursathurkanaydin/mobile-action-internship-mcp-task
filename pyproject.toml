@@ -1,0 +1,21 @@
+[project]
+name = "mcp-task"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "kursathurkanaydin", email = "kursat.aydin@hacettepe.edu.tr" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=3.4.5",
+    "pycountry>=26.2.16",
+    "python-dotenv>=1.2.2",
+]
+
+[project.scripts]
+mcp-task = "mcp_task.server:run"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
