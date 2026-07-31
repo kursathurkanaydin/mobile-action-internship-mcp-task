@@ -1,5 +1,4 @@
 import httpx
-import pycountry
 
 from mcp_task.mcp_instance import mcp
 from mcp_task.validation import InputValidationError, require_country_code, require_text, require_track_id
@@ -82,12 +81,3 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
         "name": app["trackName"],
         "url": app["trackViewUrl"],
     }
-
-
-# pycountry's ISO dataset uses each country's current official/UN-registered name
-# (e.g. Turkey is listed as "Türkiye"), which breaks lookups for common
-# English names that changed. Resolve well-known mismatches before falling
-# back to fuzzy search.
-_COUNTRY_NAME_ALIASES = {
-    "turkey": "TR",
-}
