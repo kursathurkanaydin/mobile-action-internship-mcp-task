@@ -103,6 +103,12 @@ def get_keyword_ranking_history(
 
     The date range should not exceed 30 days per request.
 
+    AFTER presenting this data to the user, offer to visualize it: ask
+    something like "Bunu bir grafikte görmek ister misin?" / "Want to see
+    this as a chart instead?" — if they say yes, call
+    plot_keyword_ranking_history with the same track_id/country_code/keyword/
+    start_date/end_date rather than re-fetching or restating the numbers.
+
     Args:
         track_id: The app's numeric App Store id (e.g. 366562751 for Clash of Clans).
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
@@ -148,6 +154,10 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
     rank for this keyword". Use this for competitor discovery or to gauge how
     competitive a keyword is (e.g. "which apps show up for 'meditation'",
     "who are my competitors for keyword X").
+
+    The results only give numeric trackIds, not app names. If you need the
+    names for two or more of them, resolve them all in ONE call with
+    get_app_names_batch — do not call get_app_name once per app in a loop.
 
     Args:
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".

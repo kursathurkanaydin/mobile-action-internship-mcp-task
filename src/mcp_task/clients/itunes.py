@@ -45,3 +45,26 @@ def lookup_app(track_id: int, country: str) -> dict:
         raise AppLookupError(f"No app found for trackId {track_id} in storefront '{country}'")
 
     return results[0]
+
+
+def lookup_apps(track_ids: list[int], country: str) -> list[dict]:
+    """Look up several apps in one request by passing comma-joined trackIds.
+
+    iTunes' lookup endpoint accepts a comma-separated id list directly, so N
+    apps cost one HTTP round trip instead of N. Ids iTunes doesn't recognize
+    are simply absent from the returned list — no per-id error is raised
+    here, since that's expected for a batch call; the caller can diff the
+    requested ids against the returned trackIds to see what's missing.
+    """
+    ids_param = ",".join(str(track_id) for track_id in track_ids)
+    try:
+        response = httpx.get(
+            "https://itunes.apple.com/lookup",
+            params={"id": ids_param, "country": country},
+            timeout=_TIMEOUT,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise AppLookupError(f"Failed to look up App Store ids: {exc}") from exc
+
+    return response.json().get("results", [])

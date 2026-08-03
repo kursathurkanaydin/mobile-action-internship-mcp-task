@@ -139,3 +139,10 @@ class TestRequireTrackIdList:
         assert require_track_id_list("111,222,333", min_count=3, max_count=3) == [111, 222, 333]
         with pytest.raises(InputValidationError):
             require_track_id_list("111,222,333,444", min_count=3, max_count=3)
+
+    def test_min_count_one_allows_a_single_id(self):
+        assert require_track_id_list("111", min_count=1) == [111]
+
+    def test_max_count_can_be_raised_for_batch_lookups(self):
+        ids = ",".join(str(100 + i) for i in range(150))
+        assert len(require_track_id_list(ids, min_count=1, max_count=150)) == 150

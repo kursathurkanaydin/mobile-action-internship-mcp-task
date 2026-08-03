@@ -45,3 +45,40 @@ class TestGetAppName:
 
         result = app_lookup.get_app_name(-5, "us")
         assert "error" in result
+
+
+class TestGetAppNamesBatch:
+    def test_success_shapes_apps_list_and_reports_no_missing_ids(self, monkeypatch):
+        fake_apps = [
+            {"trackId": 1, "trackName": "App One", "trackViewUrl": "https://example.test/1"},
+            {"trackId": 2, "trackName": "App Two", "trackViewUrl": "https://example.test/2"},
+        ]
+        monkeypatch.setattr(app_lookup, "fetch_apps_by_track_ids", lambda track_ids, country: ([1, 2], fake_apps))
+
+        result = app_lookup.get_app_names_batch("1,2", "us")
+        assert result == {
+            "apps": [
+                {"app_id": 1, "name": "App One", "url": "https://example.test/1"},
+                {"app_id": 2, "name": "App Two", "url": "https://example.test/2"},
+            ],
+            "not_found_ids": [],
+        }
+
+    def test_ids_itunes_did_not_find_are_reported_separately(self, monkeypatch):
+        fake_apps = [{"trackId": 1, "trackName": "App One", "trackViewUrl": "https://example.test/1"}]
+        monkeypatch.setattr(
+            app_lookup, "fetch_apps_by_track_ids", lambda track_ids, country: ([1, 2, 3], fake_apps)
+        )
+
+        result = app_lookup.get_app_names_batch("1,2,3", "us")
+        assert result["not_found_ids"] == [2, 3]
+        assert [app["app_id"] for app in result["apps"]] == [1]
+
+    def test_service_error_returns_error_dict(self, monkeypatch):
+        def raise_error(track_ids, country):
+            raise ToolError("Too many apps given at once: 200, but at most 150 are supported.")
+
+        monkeypatch.setattr(app_lookup, "fetch_apps_by_track_ids", raise_error)
+
+        result = app_lookup.get_app_names_batch("1,2,3", "us")
+        assert "error" in result

@@ -61,3 +61,50 @@ class TestLookupApp:
 
         with pytest.raises(itunes.AppLookupError, match="Failed to look up"):
             itunes.lookup_app(1, "us")
+
+
+class TestLookupApps:
+    def test_joins_ids_with_commas_and_returns_all_results(self, monkeypatch, fake_response):
+        captured = {}
+        results = [{"trackId": 1, "trackName": "App One"}, {"trackId": 2, "trackName": "App Two"}]
+
+        def fake_get(url, params=None, timeout=None):
+            captured["params"] = params
+            return fake_response(200, json_data={"results": results})
+
+        monkeypatch.setattr(itunes.httpx, "get", fake_get)
+
+        apps = itunes.lookup_apps([1, 2, 3], "us")
+
+        assert captured["params"]["id"] == "1,2,3"
+        assert apps == results
+
+    def test_ids_itunes_does_not_recognize_are_simply_absent_no_error(self, monkeypatch, fake_response):
+        # only 1 of the 3 requested ids came back -> not an error, caller diffs it
+        monkeypatch.setattr(
+            itunes.httpx, "get", lambda *a, **k: fake_response(200, json_data={"results": [{"trackId": 1}]})
+        )
+
+        assert itunes.lookup_apps([1, 2, 3], "us") == [{"trackId": 1}]
+
+    def test_no_results_at_all_returns_empty_list_not_an_error(self, monkeypatch, fake_response):
+        monkeypatch.setattr(
+            itunes.httpx, "get", lambda *a, **k: fake_response(200, json_data={"results": []})
+        )
+
+        assert itunes.lookup_apps([1, 2], "us") == []
+
+    def test_http_error_status_raises_app_lookup_error(self, monkeypatch, fake_response):
+        monkeypatch.setattr(itunes.httpx, "get", lambda *a, **k: fake_response(500))
+
+        with pytest.raises(itunes.AppLookupError, match="Failed to look up"):
+            itunes.lookup_apps([1, 2], "us")
+
+    def test_network_error_raises_app_lookup_error(self, monkeypatch):
+        def raise_network_error(*args, **kwargs):
+            raise httpx.ConnectError("connection refused")
+
+        monkeypatch.setattr(itunes.httpx, "get", raise_network_error)
+
+        with pytest.raises(itunes.AppLookupError, match="Failed to look up"):
+            itunes.lookup_apps([1, 2], "us")

@@ -83,11 +83,11 @@ def require_positive_int(value: int | None, field_name: str) -> int | None:
 
 
 def require_track_id_list(track_ids: str, min_count: int = 2, max_count: int = 5) -> list[int]:
-    """Parse+validate a comma-separated list of track ids, e.g. for app comparisons."""
+    """Parse+validate a comma-separated list of track ids, e.g. for app comparisons or batch lookups."""
     raw_ids = [part.strip() for part in (track_ids or "").split(",") if part.strip()]
     if not raw_ids:
         raise InputValidationError(
-            "'track_ids' cannot be empty — provide two or more comma-separated App Store ids."
+            "'track_ids' cannot be empty — provide one or more comma-separated App Store ids."
         )
 
     parsed_ids = []
@@ -102,10 +102,9 @@ def require_track_id_list(track_ids: str, min_count: int = 2, max_count: int = 5
         require_track_id(track_id)
 
     if len(unique_ids) < min_count:
-        raise InputValidationError(f"Need at least {min_count} distinct app ids to compare, got {len(unique_ids)}.")
+        raise InputValidationError(f"Need at least {min_count} distinct app ids, got {len(unique_ids)}.")
     if len(unique_ids) > max_count:
         raise InputValidationError(
-            f"Too many apps to compare at once: {len(unique_ids)} given, but at most {max_count} "
-            "are supported to keep the chart readable."
+            f"Too many apps given at once: {len(unique_ids)}, but at most {max_count} are supported."
         )
     return unique_ids

@@ -55,3 +55,45 @@ class TestFetchAppByTrackId:
 
         assert captured == {"track_id": 570060128, "country": "us"}
         assert result == fake_app
+
+
+class TestFetchAppsByTrackIds:
+    def test_empty_track_ids_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(app_service, "lookup_apps", _no_call)
+        with pytest.raises(ToolError, match="cannot be empty"):
+            app_service.fetch_apps_by_track_ids("", "us")
+
+    def test_single_id_is_allowed(self, monkeypatch):
+        fake_apps = [{"trackId": 1, "trackName": "App One"}]
+        monkeypatch.setattr(app_service, "lookup_apps", lambda ids, country: fake_apps)
+
+        requested_ids, apps = app_service.fetch_apps_by_track_ids("1", "us")
+        assert requested_ids == [1]
+        assert apps == fake_apps
+
+    def test_valid_input_delegates_to_lookup_apps_with_parsed_ids(self, monkeypatch):
+        captured = {}
+        fake_apps = [{"trackId": 1}, {"trackId": 2}]
+
+        def fake_lookup_apps(ids, country):
+            captured["ids"] = ids
+            captured["country"] = country
+            return fake_apps
+
+        monkeypatch.setattr(app_service, "lookup_apps", fake_lookup_apps)
+        requested_ids, apps = app_service.fetch_apps_by_track_ids(" 1 , 2 ", "us")
+
+        assert requested_ids == [1, 2]
+        assert captured == {"ids": [1, 2], "country": "us"}
+        assert apps == fake_apps
+
+    def test_more_than_150_ids_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(app_service, "lookup_apps", _no_call)
+        ids = ",".join(str(i) for i in range(1, 152))
+        with pytest.raises(ToolError, match="at most 150"):
+            app_service.fetch_apps_by_track_ids(ids, "us")
+
+    def test_invalid_country_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(app_service, "lookup_apps", _no_call)
+        with pytest.raises(ToolError):
+            app_service.fetch_apps_by_track_ids("1,2", "usa")
