@@ -3,10 +3,10 @@ from fastmcp.exceptions import ToolError as FastMCPToolError
 from mcp_task.charting.dashboard import render_dashboard_html
 from mcp_task.charting.renderer import render_ranking_history_chart
 from mcp_task.charting.server import publish_chart, publish_html
-from mcp_task.clients.itunes import lookup_app
 from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
-from mcp_task.tools.keyword_services import fetch_keyword_ranking_history
+from mcp_task.services.app_service import fetch_app_by_track_id
+from mcp_task.services.keyword_service import fetch_keyword_ranking_history
 from mcp_task.validation import require_track_id_list
 
 
@@ -66,7 +66,7 @@ def plot_keyword_ranking_history(
 def _resolve_app_label(track_id: int, country_code: str) -> str:
     """Best-effort app name lookup for a chart/table label; falls back to the track id."""
     try:
-        app = lookup_app(track_id, country_code)
+        app = fetch_app_by_track_id(track_id, country_code)
     except ToolError:
         return f"App {track_id}"
     return app.get("trackName") or f"App {track_id}"

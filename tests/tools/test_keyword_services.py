@@ -1,103 +1,92 @@
-from mcp_task.clients.mobileaction import MobileActionAPIError
+from mcp_task.errors import ToolError
 from mcp_task.tools import keyword_services as ks
 
 
-def _no_call(*args, **kwargs):
-    raise AssertionError("the MobileAction client should not be called for invalid input")
-
-
 class TestGetKeywordRanking:
-    def test_invalid_track_id_short_circuits_before_any_request(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        result = ks.get_keyword_ranking(0, "US", "strategy")
-        assert "error" in result
-
-    def test_success_wraps_client_data_under_rankings(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", lambda path, params: [{"keyword": "strategy", "rank": 5}])
-        result = ks.get_keyword_ranking(529479190, "us", "strategy")
+    def test_success_wraps_service_data_under_rankings(self, monkeypatch):
+        monkeypatch.setattr(ks, "fetch_keyword_ranking", lambda *a: [{"keyword": "strategy", "rank": 5}])
+        result = ks.get_keyword_ranking(529479190, "US", "strategy")
         assert result == {"rankings": [{"keyword": "strategy", "rank": 5}]}
 
-    def test_api_failure_returns_error_shape(self, monkeypatch):
-        def raise_error(path, params):
-            raise MobileActionAPIError("out of credits", status_code=429)
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("out of credits", status_code=429)
 
-        monkeypatch.setattr(ks, "get", raise_error)
+        monkeypatch.setattr(ks, "fetch_keyword_ranking", raise_error)
         result = ks.get_keyword_ranking(529479190, "US", "strategy")
         assert result == {"error": "out of credits", "status_code": 429}
 
 
 class TestGetTopKeywords:
-    def test_invalid_limit_short_circuits_before_any_request(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        result = ks.get_top_keywords(529479190, "US", "2026-07-01", limit=-5)
-        assert "error" in result
-
-    def test_success_wraps_client_data_under_top_keywords(self, monkeypatch):
+    def test_success_wraps_service_data_under_top_keywords(self, monkeypatch):
         fake_data = [{"keyword": "game", "searchVolume": 100, "rank": 3}]
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "fetch_top_keywords", lambda *a: fake_data)
         result = ks.get_top_keywords(529479190, "US", "2026-07-01")
         assert result == {"top_keywords": fake_data}
 
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("bad input")
 
-class TestFetchKeywordRankingHistory:
-    def test_invalid_date_range_raises(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        import pytest
-
-        from mcp_task.errors import ToolError
-
-        with pytest.raises(ToolError):
-            ks.fetch_keyword_ranking_history(529479190, "US", "strategy", "2026-07-20", "2026-07-01")
-
-    def test_success_returns_raw_client_data(self, monkeypatch):
-        fake_history = [{"date": "2026-07-01T00:00:00", "rank": 10, "appKind": "IPHONE"}]
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_history)
-        result = ks.fetch_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-01")
-        assert result == fake_history
+        monkeypatch.setattr(ks, "fetch_top_keywords", raise_error)
+        result = ks.get_top_keywords(529479190, "US", "2026-07-01", limit=-5)
+        assert result == {"error": "bad input", "status_code": None}
 
 
 class TestGetKeywordRankingHistory:
-    def test_invalid_country_code_returns_error_dict(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        result = ks.get_keyword_ranking_history(529479190, "USA", "strategy", "2026-07-01", "2026-07-05")
-        assert "error" in result
-
-    def test_success_wraps_client_data_under_history(self, monkeypatch):
+    def test_success_wraps_service_data_under_history(self, monkeypatch):
         fake_history = [{"date": "2026-07-01T00:00:00", "rank": 10, "appKind": "IPHONE"}]
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_history)
+        monkeypatch.setattr(ks, "fetch_keyword_ranking_history", lambda *a: fake_history)
         result = ks.get_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-01")
         assert result == {"history": fake_history}
 
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("start_date must be on or before end_date")
 
-class TestGetKeywordMetadata:
-    def test_empty_keyword_returns_error_dict(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        result = ks.get_keyword_metadata("US", "")
+        monkeypatch.setattr(ks, "fetch_keyword_ranking_history", raise_error)
+        result = ks.get_keyword_ranking_history(529479190, "US", "strategy", "2026-07-20", "2026-07-01")
         assert "error" in result
 
-    def test_success_wraps_client_data_under_metadata(self, monkeypatch):
+
+class TestGetKeywordMetadata:
+    def test_success_wraps_service_data_under_metadata(self, monkeypatch):
         fake_data = {"searchVolume": 500, "popularity": 80}
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "fetch_keyword_metadata", lambda *a: fake_data)
         result = ks.get_keyword_metadata("US", "meditation")
         assert result == {"metadata": fake_data}
 
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("'keyword' cannot be empty.")
 
-class TestGetAppsForKeyword:
-    def test_invalid_country_code_returns_error_dict(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
-        result = ks.get_apps_for_keyword("", "meditation")
+        monkeypatch.setattr(ks, "fetch_keyword_metadata", raise_error)
+        result = ks.get_keyword_metadata("US", "")
         assert "error" in result
 
-    def test_success_wraps_client_data_under_apps(self, monkeypatch):
+
+class TestGetAppsForKeyword:
+    def test_success_wraps_service_data_under_apps(self, monkeypatch):
         fake_data = [{"trackId": 1}, {"trackId": 2}]
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "fetch_apps_for_keyword", lambda *a: fake_data)
         result = ks.get_apps_for_keyword("US", "meditation")
         assert result == {"apps": fake_data}
 
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("bad country code")
+
+        monkeypatch.setattr(ks, "fetch_apps_for_keyword", raise_error)
+        result = ks.get_apps_for_keyword("", "meditation")
+        assert "error" in result
+
 
 class TestGetOrganicKeywords:
-    def test_invalid_device_returns_error_dict(self, monkeypatch):
-        monkeypatch.setattr(ks, "get", _no_call)
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("bad device")
+
+        monkeypatch.setattr(ks, "fetch_organic_keywords", raise_error)
         result = ks.get_organic_keywords(529479190, "US", "ANDROID", "2026-07-01")
         assert "error" in result
 
@@ -114,7 +103,7 @@ class TestGetOrganicKeywords:
             "date": "2026-07-01",
             "rankings": rankings,
         }
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "fetch_organic_keywords", lambda *a: fake_data)
 
         result = ks.get_organic_keywords(529479190, "US", "IPHONE", "2026-07-01", limit=2)
 
@@ -125,7 +114,7 @@ class TestGetOrganicKeywords:
     def test_missing_rank_is_treated_as_worst(self, monkeypatch):
         rankings = [{"keyword": "no-rank"}, {"keyword": "ranked", "rank": 1}]
         fake_data = {"rankings": rankings}
-        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "fetch_organic_keywords", lambda *a: fake_data)
 
         result = ks.get_organic_keywords(529479190, "US", "IPHONE", "2026-07-01", limit=2)
 

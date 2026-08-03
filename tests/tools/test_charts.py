@@ -31,18 +31,18 @@ class TestPlotKeywordRankingHistory:
 
 class TestResolveAppLabel:
     def test_returns_app_name_on_success(self, monkeypatch):
-        monkeypatch.setattr(charts, "lookup_app", lambda track_id, country: {"trackName": "Clash of Clans"})
+        monkeypatch.setattr(charts, "fetch_app_by_track_id", lambda track_id, country: {"trackName": "Clash of Clans"})
         assert charts._resolve_app_label(529479190, "US") == "Clash of Clans"
 
     def test_falls_back_to_track_id_on_lookup_failure(self, monkeypatch):
         def raise_error(track_id, country):
             raise AppLookupError("no app found")
 
-        monkeypatch.setattr(charts, "lookup_app", raise_error)
+        monkeypatch.setattr(charts, "fetch_app_by_track_id", raise_error)
         assert charts._resolve_app_label(529479190, "US") == "App 529479190"
 
     def test_falls_back_to_track_id_when_name_missing(self, monkeypatch):
-        monkeypatch.setattr(charts, "lookup_app", lambda track_id, country: {})
+        monkeypatch.setattr(charts, "fetch_app_by_track_id", lambda track_id, country: {})
         assert charts._resolve_app_label(529479190, "US") == "App 529479190"
 
 
