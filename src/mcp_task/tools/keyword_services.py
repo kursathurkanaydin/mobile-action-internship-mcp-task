@@ -1,7 +1,7 @@
-from mcp_task.ma_client import MobileActionAPIError, get
+from mcp_task.errors import ToolInputError, to_error_response
+from mcp_task.ma_client import get
 from mcp_task.mcp_instance import mcp
 from mcp_task.validation import (
-    InputValidationError,
     require_country_code,
     require_date,
     require_date_range,
@@ -48,8 +48,8 @@ def get_keyword_ranking(
     """
     try:
         data = _fetch_keyword_ranking(track_id, country_code, keywords, date)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {"rankings": data}
 
@@ -94,8 +94,8 @@ def get_top_keywords(
     """
     try:
         data = _fetch_top_keywords(track_id, country_code, date, device, limit)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {"top_keywords": data}
 
@@ -152,8 +152,8 @@ def get_keyword_ranking_history(
     """
     try:
         data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {"history": data}
 
@@ -184,8 +184,8 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
     """
     try:
         data = _fetch_keyword_metadata(country_code, keyword)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {"metadata": data}
 
@@ -217,8 +217,8 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """
     try:
         data = _fetch_apps_for_keyword(country_code, keyword)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {"apps": data}
 
@@ -276,8 +276,8 @@ def get_organic_keywords(
     """
     try:
         data = _fetch_organic_keywords(track_id, country_code, device, date, limit)
-    except (InputValidationError, MobileActionAPIError) as exc:
-        return {"error": exc.message, "status_code": getattr(exc, "status_code", None)}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     rankings = data.get("rankings", [])
     capped_limit = max(1, min(limit, _ORGANIC_KEYWORDS_MAX_LIMIT))

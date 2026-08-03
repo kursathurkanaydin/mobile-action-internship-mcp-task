@@ -11,10 +11,9 @@ import matplotlib.pyplot as plt
 from fastmcp.exceptions import ToolError
 
 from mcp_task.chart_server import publish_chart
-from mcp_task.ma_client import MobileActionAPIError
+from mcp_task.errors import ToolInputError
 from mcp_task.mcp_instance import mcp
 from mcp_task.tools.keyword_services import fetch_keyword_ranking_history
-from mcp_task.validation import InputValidationError
 
 _DEVICE_STYLE = {
     "IPHONE": {"label": "iPhone", "color": "#0A84FF"},
@@ -55,7 +54,7 @@ def plot_keyword_ranking_history(
     """
     try:
         history = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except (InputValidationError, MobileActionAPIError) as exc:
+    except ToolInputError as exc:
         raise ToolError(exc.message) from exc
 
     if not history:

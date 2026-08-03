@@ -1,15 +1,12 @@
 import httpx
 
+from mcp_task.errors import ToolInputError, to_error_response
 from mcp_task.mcp_instance import mcp
-from mcp_task.validation import InputValidationError, require_country_code, require_text, require_track_id
+from mcp_task.validation import require_country_code, require_text, require_track_id
 
 
-class AppLookupError(Exception):
+class AppLookupError(ToolInputError):
     """A clean, user-facing error for an iTunes lookup that failed or found nothing."""
-
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
 
 
 def _fetch_app_by_name(app_name: str, country: str) -> dict:
@@ -48,8 +45,8 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
     """
     try:
         app = _fetch_app_by_name(app_name, country)
-    except (InputValidationError, AppLookupError) as exc:
-        return {"error": exc.message}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {
         "app_id": app["trackId"],
@@ -93,8 +90,8 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
     """
     try:
         app = _fetch_app_by_track_id(track_id, country)
-    except (InputValidationError, AppLookupError) as exc:
-        return {"error": exc.message}
+    except ToolInputError as exc:
+        return to_error_response(exc)
 
     return {
         "app_id": app["trackId"],

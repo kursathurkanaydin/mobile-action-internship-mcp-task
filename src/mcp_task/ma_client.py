@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from mcp_task.config import MOBILEACTION_API_KEY, MOBILEACTION_BASE_URL
+from mcp_task.errors import ToolInputError
 
 logger = logging.getLogger("mcp_task.ma_client")
 
@@ -14,13 +15,8 @@ _STATUS_MESSAGES = {
 }
 
 
-class MobileActionAPIError(Exception):
+class MobileActionAPIError(ToolInputError):
     """A clean, user-facing error for any failure talking to the MobileAction API."""
-
-    def __init__(self, message: str, status_code: int | None = None):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
 
 
 def get(path: str, params: dict | None = None) -> dict | list:
