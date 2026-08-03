@@ -1,34 +1,14 @@
-import httpx
-
+from mcp_task.clients.itunes import lookup_app, search_app
 from mcp_task.errors import ToolInputError, to_error_response
 from mcp_task.mcp_instance import mcp
 from mcp_task.validation import require_country_code, require_text, require_track_id
-
-
-class AppLookupError(ToolInputError):
-    """A clean, user-facing error for an iTunes lookup that failed or found nothing."""
 
 
 def _fetch_app_by_name(app_name: str, country: str) -> dict:
     """Validate inputs and look up an app on the App Store by name."""
     app_name = require_text(app_name, "app_name")
     country = require_country_code(country, upper=False)
-
-    try:
-        response = httpx.get(
-            "https://itunes.apple.com/search",
-            params={"term": app_name, "entity": "software", "country": country, "limit": 1},
-            timeout=15,
-        )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise AppLookupError(f"Failed to search the App Store: {exc}") from exc
-
-    results = response.json().get("results", [])
-    if not results:
-        raise AppLookupError(f"No app found for '{app_name}' in storefront '{country}'")
-
-    return results[0]
+    return search_app(app_name, country)
 
 
 @mcp.tool
@@ -59,22 +39,7 @@ def _fetch_app_by_track_id(track_id: int, country: str) -> dict:
     """Validate inputs and look up an app on the App Store by trackId."""
     track_id = require_track_id(track_id)
     country = require_country_code(country, upper=False)
-
-    try:
-        response = httpx.get(
-            "https://itunes.apple.com/lookup",
-            params={"id": track_id, "country": country},
-            timeout=15,
-        )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise AppLookupError(f"Failed to look up the App Store id: {exc}") from exc
-
-    results = response.json().get("results", [])
-    if not results:
-        raise AppLookupError(f"No app found for trackId {track_id} in storefront '{country}'")
-
-    return results[0]
+    return lookup_app(track_id, country)
 
 
 @mcp.tool

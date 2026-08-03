@@ -5,7 +5,7 @@ import httpx
 from mcp_task.config import MOBILEACTION_API_KEY, MOBILEACTION_BASE_URL
 from mcp_task.errors import ToolInputError
 
-logger = logging.getLogger("mcp_task.ma_client")
+logger = logging.getLogger(__name__)
 
 _STATUS_MESSAGES = {
     401: "Authentication failed: the MobileAction API key is invalid or missing.",
