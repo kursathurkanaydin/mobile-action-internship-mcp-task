@@ -15,6 +15,10 @@ _RANKINGS = [
 ]
 
 
+def _no_call(*args, **kwargs):
+    raise AssertionError("should not fetch when validation already failed")
+
+
 class TestPlotKeywordRanking:
     def test_invalid_input_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
@@ -136,6 +140,21 @@ class TestCompareKeywordRankingHistory:
     def test_invalid_track_ids_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
             charts.compare_keyword_ranking_history("111", "US", "strategy", "2026-07-01", "2026-07-05")
+
+    def test_more_than_five_apps_raises_fastmcp_tool_error_without_fetching(self, monkeypatch):
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", _no_call)
+
+        with pytest.raises(FastMCPToolError, match="at most 5"):
+            charts.compare_keyword_ranking_history("1,2,3,4,5,6", "US", "strategy", "2026-07-01", "2026-07-05")
+
+    def test_exactly_five_apps_is_allowed(self, monkeypatch):
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        result = charts.compare_keyword_ranking_history("1,2,3,4,5", "US", "strategy", "2026-07-01", "2026-07-05")
+        assert result == {"dashboard_url": "http://127.0.0.1:9/fake.html"}
 
     def test_no_history_for_any_app_raises_fastmcp_tool_error(self, monkeypatch):
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")

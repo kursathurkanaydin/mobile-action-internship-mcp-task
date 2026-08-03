@@ -82,7 +82,7 @@ def require_positive_int(value: int | None, field_name: str) -> int | None:
     return value
 
 
-def require_track_id_list(track_ids: str, min_count: int = 2, max_count: int = 6) -> list[int]:
+def require_track_id_list(track_ids: str, min_count: int = 2, max_count: int = 5) -> list[int]:
     """Parse+validate a comma-separated list of track ids, e.g. for app comparisons."""
     raw_ids = [part.strip() for part in (track_ids or "").split(",") if part.strip()]
     if not raw_ids:

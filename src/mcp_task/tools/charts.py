@@ -154,7 +154,9 @@ def compare_keyword_ranking_history(
     renders a dashboard: an interactive line chart (toggle apps via the legend,
     hover a point for its exact date/rank) plus a per-app stat card and summary
     table (best/worst/average rank, current trend). The date range should not
-    exceed 30 days per request; between 2 and 6 apps are supported.
+    exceed 30 days per request; between 2 and 5 apps are supported (each app
+    costs a separate MobileAction API request, so this is capped to limit
+    credit usage per call).
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
     that opens the dashboard in a browser.
@@ -165,7 +167,7 @@ def compare_keyword_ranking_history(
     — do not just say the dashboard is ready without including the link itself.
 
     Args:
-        track_ids: Two to six App Store ids, comma-separated (e.g. "529479190,553834731").
+        track_ids: Two to five App Store ids, comma-separated (e.g. "529479190,553834731").
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
         keyword: A single keyword to compare ranking history for.
         start_date: History start date, inclusive, in YYYY-MM-DD format.
