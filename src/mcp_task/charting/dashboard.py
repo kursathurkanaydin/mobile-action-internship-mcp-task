@@ -1,34 +1,56 @@
-import base64
+import json
+from functools import lru_cache
 from html import escape
+from pathlib import Path
 from statistics import mean
 
 from mcp_task.charting.renderer import best_rank_series
 
 _ACCENT_COLORS = ["#0A84FF", "#FF9F0A", "#30D158", "#FF375F", "#BF5AF2", "#64D2FF"]
+_VENDOR_DIR = Path(__file__).parent / "vendor"
+
+
+@lru_cache(maxsize=1)
+def _chartjs_source() -> str:
+    """Chart.js UMD build, vendored locally so the dashboard needs no CDN/network access."""
+    return (_VENDOR_DIR / "chart.umd.min.js").read_text(encoding="utf-8")
+
+
+def _safe_json(value) -> str:
+    """json.dumps that's safe to inline inside a <script> tag.
+
+    A raw "</script" substring in an app label or date would otherwise close
+    the script block early and let the rest be parsed as HTML.
+    """
+    return json.dumps(value).replace("</", "<\\/")
 
 
 def render_dashboard_html(
     histories_by_app: dict[str, list[dict]],
-    chart_png: bytes,
     keyword: str,
     country_code: str,
     start_date: str,
     end_date: str,
 ) -> bytes:
-    """Build a self-contained HTML dashboard comparing keyword ranking history across apps.
+    """Build a self-contained, interactive HTML dashboard comparing keyword ranking history.
 
-    Embeds the pre-rendered comparison chart as a data URI (no separate image
-    file to serve) and adds a per-app stat card + summary table below it,
-    computed from the same best_rank_series numbers the chart was drawn from.
+    Draws the comparison as a live Chart.js line chart (rank per day, one
+    series per app) instead of a static image: series can be toggled from the
+    legend, hovering a point shows its exact date/rank, and the Chart.js
+    library itself is embedded inline (no CDN) so the page works offline.
+    Adds a per-app stat card + summary table below it, computed from the same
+    best_rank_series numbers the chart is drawn from.
     """
-    chart_data_uri = base64.b64encode(chart_png).decode()
+    series_by_app = {label: best_rank_series(history) for label, history in histories_by_app.items()}
+    all_dates = sorted({entry_date for points in series_by_app.values() for entry_date, _ in points})
 
-    cards, rows = [], []
+    cards, rows, datasets = [], [], []
     for index, (label, history) in enumerate(histories_by_app.items()):
         color = _ACCENT_COLORS[index % len(_ACCENT_COLORS)]
         stats = _summarize(history)
         cards.append(_render_stat_card(label, color, stats))
         rows.append(_render_table_row(label, color, stats))
+        datasets.append(_build_dataset(label, color, series_by_app[label], all_dates))
 
     return _PAGE_TEMPLATE.format(
         keyword=escape(keyword),
@@ -37,9 +59,27 @@ def render_dashboard_html(
         end_date=escape(end_date),
         cards="".join(cards),
         rows="".join(rows),
-        chart_data_uri=chart_data_uri,
         css=_CSS,
+        chartjs_source=_chartjs_source(),
+        chart_labels=_safe_json([entry_date.strftime("%b %d") for entry_date in all_dates]),
+        chart_datasets=_safe_json(datasets),
     ).encode("utf-8")
+
+
+def _build_dataset(label: str, color: str, points: list[tuple], all_dates: list) -> dict:
+    """Align one app's (date, rank) points onto the shared all_dates axis.
+
+    Days the app has no ranking for become null, which Chart.js renders as a
+    gap in the line rather than snapping to zero or interpolating.
+    """
+    rank_by_date = dict(points)
+    return {
+        "label": label,
+        "borderColor": color,
+        "backgroundColor": color,
+        "spanGaps": False,
+        "data": [rank_by_date.get(entry_date) for entry_date in all_dates],
+    }
 
 
 def _summarize(history: list[dict]) -> dict:
@@ -143,14 +183,16 @@ header .subtitle { margin: 0 0 2rem; color: var(--muted); font-size: 0.95rem; }
 .card-trend.flat { color: var(--muted); }
 .card-best { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
 .card-empty { font-size: 0.85rem; color: var(--muted); }
-.chart {
+.chart-container {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1.5rem;
   margin-bottom: 2rem;
+  height: 420px;
+  position: relative;
 }
-.chart img { width: 100%; height: auto; display: block; border-radius: 6px; }
+canvas { width: 100% !important; height: 100% !important; }
 table {
   width: 100%;
   border-collapse: collapse;
@@ -171,6 +213,7 @@ _PAGE_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <title>"{keyword}" ranking comparison</title>
 <style>{css}</style>
+<script>{chartjs_source}</script>
 </head>
 <body>
   <div class="page">
@@ -181,8 +224,8 @@ _PAGE_TEMPLATE = """<!doctype html>
 
     <section class="cards">{cards}</section>
 
-    <section class="chart">
-      <img src="data:image/png;base64,{chart_data_uri}" alt="Ranking comparison chart">
+    <section class="chart-container">
+      <canvas id="rankChart"></canvas>
     </section>
 
     <section>
@@ -194,6 +237,58 @@ _PAGE_TEMPLATE = """<!doctype html>
       </table>
     </section>
   </div>
+
+  <script>
+    const labels = {chart_labels};
+    const datasets = {chart_datasets};
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridColor = isDarkMode ? '#3a3a3c' : '#e5e5ea';
+    const textColor = isDarkMode ? '#98989d' : '#6e6e73';
+    const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    new Chart(document.getElementById('rankChart'), {{
+      type: 'line',
+      data: {{
+        labels: labels,
+        datasets: datasets.map((dataset) => ({{
+          ...dataset,
+          borderWidth: 2,
+          tension: 0.2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        }})),
+      }},
+      options: {{
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {{ mode: 'index', intersect: false }},
+        plugins: {{
+          legend: {{
+            position: 'top',
+            labels: {{ color: textColor, usePointStyle: true, padding: 16, font: {{ family: fontFamily }} }},
+          }},
+          tooltip: {{
+            callbacks: {{
+              label: (context) =>
+                context.parsed.y === null ? null : `${{context.dataset.label}}: Rank #${{context.parsed.y}}`,
+            }},
+          }},
+        }},
+        scales: {{
+          x: {{
+            grid: {{ color: gridColor }},
+            ticks: {{ color: textColor }},
+          }},
+          y: {{
+            reverse: true,
+            title: {{ display: true, text: 'Rank (lower is better)', color: textColor }},
+            grid: {{ color: gridColor }},
+            ticks: {{ color: textColor, precision: 0 }},
+          }},
+        }},
+      }},
+    }});
+  </script>
 </body>
 </html>
 """

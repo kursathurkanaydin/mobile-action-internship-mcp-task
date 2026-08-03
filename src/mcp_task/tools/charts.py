@@ -1,7 +1,7 @@
 from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.dashboard import render_dashboard_html
-from mcp_task.charting.renderer import render_comparison_chart, render_ranking_history_chart
+from mcp_task.charting.renderer import render_ranking_history_chart
 from mcp_task.charting.server import publish_chart, publish_html
 from mcp_task.clients.itunes import lookup_app
 from mcp_task.errors import ToolError
@@ -98,9 +98,10 @@ def compare_keyword_ranking_history(
 
     Fetches each app's ranking history, collapses iPhone/iPad to a single best
     rank per day (comparing multiple apps' devices at once gets too busy), and
-    renders a dashboard: one comparison chart plus a per-app stat card and
-    summary table (best/worst/average rank, current trend). The date range
-    should not exceed 30 days per request; between 2 and 6 apps are supported.
+    renders a dashboard: an interactive line chart (toggle apps via the legend,
+    hover a point for its exact date/rank) plus a per-app stat card and summary
+    table (best/worst/average rank, current trend). The date range should not
+    exceed 30 days per request; between 2 and 6 apps are supported.
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
     that opens the dashboard in a browser.
@@ -135,8 +136,7 @@ def compare_keyword_ranking_history(
             f"({country_code}, {start_date} to {end_date})."
         )
 
-    chart_png = render_comparison_chart(histories_by_app, keyword, country_code)
-    dashboard_html = render_dashboard_html(histories_by_app, chart_png, keyword, country_code, start_date, end_date)
+    dashboard_html = render_dashboard_html(histories_by_app, keyword, country_code, start_date, end_date)
     dashboard_url = publish_html(dashboard_html)
 
     return {"dashboard_url": dashboard_url}

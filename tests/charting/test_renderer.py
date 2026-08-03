@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from mcp_task.charting.renderer import best_rank_series, render_comparison_chart, render_ranking_history_chart
+from mcp_task.charting.renderer import best_rank_series, render_ranking_history_chart
 
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
@@ -49,22 +49,4 @@ class TestRenderRankingHistoryChart:
 
     def test_handles_empty_history_without_crashing(self):
         png_bytes = render_ranking_history_chart([], "strategy", "US", 529479190)
-        assert png_bytes.startswith(_PNG_MAGIC)
-
-
-class TestRenderComparisonChart:
-    def test_returns_valid_png_bytes(self):
-        histories_by_app = {
-            "Clash of Clans": [_entry("2026-07-01T00:00:00", 12)],
-            "Clash Royale": [_entry("2026-07-01T00:00:00", 20)],
-        }
-        png_bytes = render_comparison_chart(histories_by_app, "strategy", "US")
-        assert png_bytes.startswith(_PNG_MAGIC)
-
-    def test_app_with_no_ranked_days_is_skipped_without_crashing(self):
-        histories_by_app = {
-            "Has Data": [_entry("2026-07-01T00:00:00", 12)],
-            "No Data": [_entry("2026-07-01T00:00:00", None)],
-        }
-        png_bytes = render_comparison_chart(histories_by_app, "strategy", "US")
         assert png_bytes.startswith(_PNG_MAGIC)
