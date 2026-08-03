@@ -8,6 +8,8 @@ from mcp_task.charting.renderer import best_rank_series
 
 _ACCENT_COLORS = ["#0A84FF", "#FF9F0A", "#30D158", "#FF375F", "#BF5AF2", "#64D2FF"]
 _VENDOR_DIR = Path(__file__).parent / "vendor"
+_DEVICES = ["IPHONE", "IPAD"]
+_DEVICE_LABELS = {"IPHONE": "iPhone", "IPAD": "iPad"}
 
 
 @lru_cache(maxsize=1)
@@ -35,55 +37,68 @@ def render_dashboard_html(
     """Build a self-contained, interactive HTML dashboard comparing keyword ranking history.
 
     Draws the comparison as a live Chart.js line chart (rank per day, one
-    series per app) instead of a static image: series can be toggled from the
-    legend, hovering a point shows its exact date/rank, and the Chart.js
-    library itself is embedded inline (no CDN) so the page works offline.
-    Adds a per-app stat card + summary table below it, computed from the same
-    best_rank_series numbers the chart is drawn from.
+    series per app), with an iPhone/iPad toggle button that swaps the chart,
+    stat cards, and summary table to that device's numbers — devices are kept
+    separate rather than merged, since an app's iPhone and iPad ranks can
+    differ a lot. Hovering a chart point shows its exact date/rank, legend
+    entries can be clicked to hide a series, and the Chart.js library itself
+    is embedded inline (no CDN) so the page works offline.
     """
-    series_by_app = {label: best_rank_series(history) for label, history in histories_by_app.items()}
-    all_dates = sorted({entry_date for points in series_by_app.values() for entry_date, _ in points})
+    cards_by_device, rows_by_device, chart_data_by_device = {}, {}, {}
+    for device in _DEVICES:
+        cards, rows = [], []
+        for index, (label, history) in enumerate(histories_by_app.items()):
+            color = _ACCENT_COLORS[index % len(_ACCENT_COLORS)]
+            stats = _summarize(history, device)
+            cards.append(_render_stat_card(label, color, stats))
+            rows.append(_render_table_row(label, color, stats))
+        cards_by_device[device] = "".join(cards)
+        rows_by_device[device] = "".join(rows)
+        chart_data_by_device[device] = _build_chart_view(histories_by_app, device)
 
-    cards, rows, datasets = [], [], []
-    for index, (label, history) in enumerate(histories_by_app.items()):
-        color = _ACCENT_COLORS[index % len(_ACCENT_COLORS)]
-        stats = _summarize(history)
-        cards.append(_render_stat_card(label, color, stats))
-        rows.append(_render_table_row(label, color, stats))
-        datasets.append(_build_dataset(label, color, series_by_app[label], all_dates))
+    default_device = _DEVICES[0]
 
     return _PAGE_TEMPLATE.format(
         keyword=escape(keyword),
         country_code=escape(country_code.upper()),
         start_date=escape(start_date),
         end_date=escape(end_date),
-        cards="".join(cards),
-        rows="".join(rows),
+        device_toggle=_render_device_toggle(default_device),
+        cards_sections=_render_device_sections("cards", cards_by_device, default_device),
+        table_sections=_render_device_sections("", rows_by_device, default_device, wrap_as_table=True),
         css=_CSS,
         chartjs_source=_chartjs_source(),
-        chart_labels=_safe_json([entry_date.strftime("%b %d") for entry_date in all_dates]),
-        chart_datasets=_safe_json(datasets),
+        default_device=_safe_json(default_device),
+        chart_data_by_device=_safe_json(chart_data_by_device),
     ).encode("utf-8")
 
 
-def _build_dataset(label: str, color: str, points: list[tuple], all_dates: list) -> dict:
-    """Align one app's (date, rank) points onto the shared all_dates axis.
+def _build_chart_view(histories_by_app: dict[str, list[dict]], device: str) -> dict:
+    """Build the {labels, datasets} Chart.js payload for one device."""
+    series_by_app = {label: best_rank_series(history, device=device) for label, history in histories_by_app.items()}
+    all_dates = sorted({entry_date for points in series_by_app.values() for entry_date, _ in points})
 
-    Days the app has no ranking for become null, which Chart.js renders as a
-    gap in the line rather than snapping to zero or interpolating.
-    """
-    rank_by_date = dict(points)
-    return {
-        "label": label,
-        "borderColor": color,
-        "backgroundColor": color,
-        "spanGaps": False,
-        "data": [rank_by_date.get(entry_date) for entry_date in all_dates],
-    }
+    datasets = []
+    for index, (label, points) in enumerate(series_by_app.items()):
+        color = _ACCENT_COLORS[index % len(_ACCENT_COLORS)]
+        rank_by_date = dict(points)
+        datasets.append(
+            {
+                "label": label,
+                "borderColor": color,
+                "backgroundColor": color,
+                "spanGaps": False,
+                # missing days become null -> Chart.js draws a gap instead of
+                # snapping to zero or interpolating across them
+                "data": [rank_by_date.get(entry_date) for entry_date in all_dates],
+            }
+        )
+
+    return {"labels": [entry_date.strftime("%b %d") for entry_date in all_dates], "datasets": datasets}
 
 
-def _summarize(history: list[dict]) -> dict:
-    points = best_rank_series(history)
+def _summarize(history: list[dict], device: str) -> dict:
+    points = best_rank_series(history, device=device)
     if not points:
         return {"days": 0}
 
@@ -96,6 +111,37 @@ def _summarize(history: list[dict]) -> dict:
         "current": ranks[-1],
         "trend": ranks[0] - ranks[-1],  # positive = improved (rank number went down)
     }
+
+
+def _render_device_toggle(default_device: str) -> str:
+    buttons = "".join(
+        f'<button type="button" class="device-btn{" active" if device == default_device else ""}" '
+        f'data-device="{device}">{_DEVICE_LABELS[device]}</button>'
+        for device in _DEVICES
+    )
+    return f'<div class="device-toggle">{buttons}</div>'
+
+
+def _render_device_sections(
+    css_class: str, content_by_device: dict[str, str], default_device: str, wrap_as_table: bool = False
+) -> str:
+    """Render one <section> per device, hidden except for the default device.
+
+    The inline JS toggles the `hidden` attribute on these when the user
+    clicks the iPhone/iPad button, instead of re-rendering any markup.
+    """
+    sections = []
+    for device, content in content_by_device.items():
+        hidden_attr = "" if device == default_device else " hidden"
+        class_attr = f' class="{css_class}"' if css_class else ""
+        inner = (
+            f"<table><thead><tr><th>App</th><th>Best rank</th><th>Worst rank</th>"
+            f"<th>Average rank</th><th>Days tracked</th></tr></thead><tbody>{content}</tbody></table>"
+            if wrap_as_table
+            else content
+        )
+        sections.append(f'<section{class_attr} data-device-section="{device}"{hidden_attr}>{inner}</section>')
+    return "".join(sections)
 
 
 def _render_stat_card(label: str, color: str, stats: dict) -> str:
@@ -152,6 +198,7 @@ _CSS = """
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   padding: 2.5rem 1.5rem;
@@ -161,7 +208,28 @@ body {
 }
 .page { max-width: 960px; margin: 0 auto; }
 header h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
-header .subtitle { margin: 0 0 2rem; color: var(--muted); font-size: 0.95rem; }
+header .subtitle { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.device-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  margin-bottom: 1.5rem;
+}
+.device-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.device-btn.active { background: var(--bg); color: var(--text); }
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -222,41 +290,41 @@ _PAGE_TEMPLATE = """<!doctype html>
       <p class="subtitle">"{keyword}" &middot; {country_code} App Store &middot; {start_date} &rarr; {end_date}</p>
     </header>
 
-    <section class="cards">{cards}</section>
+    {device_toggle}
+
+    {cards_sections}
 
     <section class="chart-container">
       <canvas id="rankChart"></canvas>
     </section>
 
-    <section>
-      <table>
-        <thead>
-          <tr><th>App</th><th>Best rank</th><th>Worst rank</th><th>Average rank</th><th>Days tracked</th></tr>
-        </thead>
-        <tbody>{rows}</tbody>
-      </table>
-    </section>
+    {table_sections}
   </div>
 
   <script>
-    const labels = {chart_labels};
-    const datasets = {chart_datasets};
+    const chartDataByDevice = {chart_data_by_device};
+    let currentDevice = {default_device};
+
     const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const gridColor = isDarkMode ? '#3a3a3c' : '#e5e5ea';
     const textColor = isDarkMode ? '#98989d' : '#6e6e73';
     const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-    new Chart(document.getElementById('rankChart'), {{
+    function toDatasets(view) {{
+      return view.datasets.map((dataset) => ({{
+        ...dataset,
+        borderWidth: 2,
+        tension: 0.2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+      }}));
+    }}
+
+    const chart = new Chart(document.getElementById('rankChart'), {{
       type: 'line',
       data: {{
-        labels: labels,
-        datasets: datasets.map((dataset) => ({{
-          ...dataset,
-          borderWidth: 2,
-          tension: 0.2,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-        }})),
+        labels: chartDataByDevice[currentDevice].labels,
+        datasets: toDatasets(chartDataByDevice[currentDevice]),
       }},
       options: {{
         responsive: true,
@@ -287,6 +355,27 @@ _PAGE_TEMPLATE = """<!doctype html>
           }},
         }},
       }},
+    }});
+
+    function selectDevice(device) {{
+      if (device === currentDevice || !chartDataByDevice[device]) return;
+      currentDevice = device;
+
+      const view = chartDataByDevice[device];
+      chart.data.labels = view.labels;
+      chart.data.datasets = toDatasets(view);
+      chart.update();
+
+      document.querySelectorAll('.device-btn').forEach((btn) => {{
+        btn.classList.toggle('active', btn.dataset.device === device);
+      }});
+      document.querySelectorAll('[data-device-section]').forEach((section) => {{
+        section.hidden = section.dataset.deviceSection !== device;
+      }});
+    }}
+
+    document.querySelectorAll('.device-btn').forEach((btn) => {{
+      btn.addEventListener('click', () => selectDevice(btn.dataset.device));
     }});
   </script>
 </body>

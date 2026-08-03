@@ -15,14 +15,19 @@ _DEVICE_STYLE = {
 }
 
 
-def best_rank_series(history: list[dict]) -> list[tuple[datetime, int]]:
-    """Collapse raw {rank, date, appKind} entries to one best (lowest) rank per day.
+def best_rank_series(history: list[dict], device: str | None = None) -> list[tuple[datetime, int]]:
+    """Collapse raw {rank, date, appKind} entries to one rank per day, sorted by date.
 
-    Used by the comparison dashboard for both its chart series and its
-    stat cards/table, so all three work off the exact same numbers.
+    With device=None, entries from every device are merged, keeping the best
+    (lowest) rank per day. With device="IPHONE"/"IPAD", only that device's
+    entries are considered. Used by the comparison dashboard for its
+    per-device chart series and stat cards/table, so all three work off the
+    exact same numbers.
     """
     best_by_date: dict[datetime, int] = {}
     for entry in history:
+        if device is not None and entry.get("appKind") != device:
+            continue
         rank = entry.get("rank")
         if rank is None:
             continue

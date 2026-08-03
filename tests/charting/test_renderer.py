@@ -35,6 +35,26 @@ class TestBestRankSeries:
     def test_empty_history_returns_empty_list(self):
         assert best_rank_series([]) == []
 
+    def test_device_filter_only_considers_that_devices_entries(self):
+        history = [
+            _entry("2026-07-01T00:00:00", 20, "IPHONE"),
+            _entry("2026-07-01T00:00:00", 15, "IPAD"),
+        ]
+        assert best_rank_series(history, device="IPHONE") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 20)]
+        assert best_rank_series(history, device="IPAD") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 15)]
+
+    def test_device_filter_excludes_days_only_present_on_other_device(self):
+        history = [
+            _entry("2026-07-01T00:00:00", 20, "IPHONE"),
+            _entry("2026-07-02T00:00:00", 10, "IPAD"),
+        ]
+        assert best_rank_series(history, device="IPHONE") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 20)]
+        assert best_rank_series(history, device="IPAD") == [(datetime.fromisoformat("2026-07-02T00:00:00"), 10)]
+
+    def test_device_filter_with_no_matching_entries_returns_empty_list(self):
+        history = [_entry("2026-07-01T00:00:00", 20, "IPHONE")]
+        assert best_rank_series(history, device="IPAD") == []
+
 
 class TestRenderRankingHistoryChart:
     def test_returns_valid_png_bytes(self):
