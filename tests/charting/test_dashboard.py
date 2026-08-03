@@ -1,11 +1,23 @@
 import json
 import re
 
-from mcp_task.charting.dashboard import render_dashboard_html
+from mcp_task.charting import dashboard
+from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ranking_dashboard
 
 
 def _entry(date: str, rank, device: str = "IPHONE"):
     return {"trackId": 1, "keyword": "strategy", "rank": rank, "countryCode": "US", "date": date, "appKind": device}
+
+
+def _ranking(keyword: str, rank, device: str = "IPHONE"):
+    return {
+        "trackId": 1,
+        "keyword": keyword,
+        "rank": rank,
+        "countryCode": "US",
+        "date": "2026-08-02T00:45:17",
+        "appKind": device,
+    }
 
 
 def _extract_json(text: str, var_name: str):
@@ -221,3 +233,87 @@ class TestRenderDashboardHtmlEscaping:
         # renders the real (HTML-escaped-for-display) legend text correctly
         chart_data = _extract_json(html, "chartDataByDevice")
         assert chart_data["IPHONE"]["datasets"][0]["label"] == breakout_label
+
+
+class TestKeywordRankMap:
+    def test_maps_keyword_to_rank_for_requested_device_only(self):
+        rankings = [_ranking("clan", 1, "IPHONE"), _ranking("clan", 90, "IPAD")]
+        assert dashboard._keyword_rank_map(rankings, "IPHONE") == {"clan": 1}
+        assert dashboard._keyword_rank_map(rankings, "IPAD") == {"clan": 90}
+
+    def test_keeps_best_rank_for_duplicate_keyword_device_entries(self):
+        rankings = [_ranking("clan", 30, "IPHONE"), _ranking("clan", 5, "IPHONE")]
+        assert dashboard._keyword_rank_map(rankings, "IPHONE") == {"clan": 5}
+
+    def test_ignores_entries_with_missing_rank(self):
+        rankings = [_ranking("clan", None, "IPHONE")]
+        assert dashboard._keyword_rank_map(rankings, "IPHONE") == {}
+
+    def test_empty_rankings_returns_empty_map(self):
+        assert dashboard._keyword_rank_map([], "IPHONE") == {}
+
+
+class TestRenderKeywordRankingDashboard:
+    def test_returns_utf8_bytes_with_expected_header_info(self):
+        rankings = [_ranking("clan", 1)]
+        html = render_keyword_ranking_dashboard(rankings, ["clan"], "Clash of Clans", "US", "2026-08-02")
+
+        assert isinstance(html, bytes)
+        text = html.decode("utf-8")
+        assert "<h1>Keyword Rankings</h1>" in text
+        assert "Clash of Clans" in text
+        assert "US App Store" in text
+        assert "2026-08-02" in text
+
+    def test_cards_and_table_sorted_best_rank_first(self):
+        rankings = [_ranking("war", 59), _ranking("clan", 1), _ranking("strategy", 19)]
+        text = render_keyword_ranking_dashboard(
+            rankings, ["strategy", "clan", "war"], "App", "US", "2026-08-02"
+        ).decode()
+
+        iphone_section = text.split('data-device-section="IPHONE">', 1)[1].split("<section", 1)[0]
+        assert iphone_section.index("clan") < iphone_section.index("strategy") < iphone_section.index("war")
+
+    def test_unranked_keyword_shown_as_not_ranked_and_excluded_from_chart(self):
+        rankings = [_ranking("clan", 1, "IPHONE")]  # "war" never ranks on any device
+        text = render_keyword_ranking_dashboard(rankings, ["clan", "war"], "App", "US", "2026-08-02").decode()
+
+        assert "Not ranked" in text
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        assert chart_data["IPHONE"]["labels"] == ["clan"]
+        assert "war" not in chart_data["IPHONE"]["labels"]
+
+    def test_keyword_color_is_consistent_across_devices(self):
+        rankings = [_ranking("clan", 5, "IPHONE"), _ranking("clan", 90, "IPAD"), _ranking("war", 1, "IPHONE")]
+        text = render_keyword_ranking_dashboard(rankings, ["clan", "war"], "App", "US", "2026-08-02").decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        iphone_colors = dict(zip(chart_data["IPHONE"]["labels"], chart_data["IPHONE"]["colors"]))
+        # "clan" isn't ranked on iPad in this fixture's chart data, but its
+        # card/table color should still match its iPhone color
+        assert f'<div class="card-label">clan</div>' in text
+        assert iphone_colors["clan"] != iphone_colors["war"]
+
+    def test_duplicate_entries_for_same_keyword_and_device_keep_best_rank(self):
+        rankings = [_ranking("clan", 30, "IPHONE"), _ranking("clan", 5, "IPHONE")]
+        text = render_keyword_ranking_dashboard(rankings, ["clan"], "App", "US", "2026-08-02").decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        assert chart_data["IPHONE"]["ranks"] == [5]
+
+    def test_bar_chart_type_is_used_not_line(self):
+        text = render_keyword_ranking_dashboard([_ranking("clan", 1)], ["clan"], "App", "US", "2026-08-02").decode()
+        assert "type: 'bar'" in text
+
+    def test_keyword_and_app_name_are_html_escaped(self):
+        rankings = [_ranking("<script>alert(1)</script>", 1)]
+        text = render_keyword_ranking_dashboard(
+            rankings, ["<script>alert(1)</script>"], "<b>App</b>", "US", "2026-08-02"
+        ).decode()
+
+        body = text.split("<body>", 1)[1].split("<script>", 1)[0]
+        assert "<script>alert(1)</script>" not in body
+        assert "<b>App</b>" not in body
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+        assert "&lt;b&gt;App&lt;/b&gt;" in body

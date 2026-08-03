@@ -7,6 +7,7 @@ Türkçe::
   - Organic keywords (50 kredi maliyetli, dikkatli test et): "Duolingo'nun iPhone'da organik olarak sıralandığı anahtar kelimeleri göster, 2026-07-01 tarihi için."
   - Reverse lookup: "trackId 570060128 olan uygulama hangisi?"
   - Compare history: "Clash of Clans ve Clash Royale'in ABD App Store'unda 'strategy game' anahtar kelimesi için son 15 günlük sıralama geçmişini karşılaştırır mısın?"
+  - Keyword ranking chart: "Clash of Clans'ın ABD App Store'unda 'clan', 'clash', 'war' ve 'strategy' kelimelerindeki sıralamasını gösteren bir grafik oluşturur musun?"
 
 English:
   - Credit check: "How many credits do I have left on my MobileAction API key?"
@@ -17,3 +18,4 @@ English:
   - Organic keywords (costs 50 credits, test carefully): "Show me the keywords Duolingo organically ranks for on iPhone, for the date 2026-07-01."
   - Reverse lookup: "What app has track id 570060128?"
   - Compare history: "Can you compare Clash of Clans and Clash Royale's ranking history for the keyword 'strategy game' on the US App Store over the last 15 days?"
+  - Keyword ranking chart: "Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"

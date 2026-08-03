@@ -21,7 +21,9 @@ def get_keyword_ranking(
 
     Returns a single day's rank (per device: iPhone/iPad) for each keyword.
     Use this when the user asks things like "what rank does app X have for
-    keyword Y in country Z" or "check keyword position".
+    keyword Y in country Z" or "check keyword position". If the user wants to
+    *see* the rankings across keywords as a chart rather than read the raw
+    numbers, use plot_keyword_ranking instead.
 
     Args:
         track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).

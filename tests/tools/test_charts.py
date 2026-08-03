@@ -9,6 +9,76 @@ _HISTORY = [
     {"date": "2026-07-02T00:00:00", "rank": 15, "appKind": "IPHONE"},
 ]
 
+_RANKINGS = [
+    {"keyword": "clan", "rank": 1, "date": "2026-08-02T00:45:18", "appKind": "IPHONE"},
+    {"keyword": "war", "rank": 59, "date": "2026-08-02T00:45:17", "appKind": "IPHONE"},
+]
+
+
+class TestPlotKeywordRanking:
+    def test_invalid_input_raises_fastmcp_tool_error(self):
+        with pytest.raises(FastMCPToolError):
+            charts.plot_keyword_ranking(-1, "US", "clan,war")
+
+    def test_no_rankings_found_raises_fastmcp_tool_error(self, monkeypatch):
+        monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: [])
+
+        with pytest.raises(FastMCPToolError, match="No ranking data found"):
+            charts.plot_keyword_ranking(529479190, "US", "clan,war")
+
+    def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
+        monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: _RANKINGS)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        result = charts.plot_keyword_ranking(529479190, "US", "clan,war")
+        assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
+
+    def test_dashboard_is_built_with_the_parsed_keyword_list(self, monkeypatch):
+        captured = {}
+
+        def fake_render(rankings, keywords, app_name, country_code, snapshot_date):
+            captured["keywords"] = keywords
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: _RANKINGS)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_keyword_ranking(529479190, "US", " clan , war ")
+        assert captured["keywords"] == ["clan", "war"]
+
+    def test_snapshot_date_defaults_to_first_ranking_entrys_date_when_not_given(self, monkeypatch):
+        captured = {}
+
+        def fake_render(rankings, keywords, app_name, country_code, snapshot_date):
+            captured["snapshot_date"] = snapshot_date
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: _RANKINGS)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_keyword_ranking(529479190, "US", "clan,war")
+        assert captured["snapshot_date"] == "2026-08-02"
+
+    def test_snapshot_date_uses_the_requested_date_when_given(self, monkeypatch):
+        captured = {}
+
+        def fake_render(rankings, keywords, app_name, country_code, snapshot_date):
+            captured["snapshot_date"] = snapshot_date
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: _RANKINGS)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_keyword_ranking(529479190, "US", "clan,war", "2026-07-15")
+        assert captured["snapshot_date"] == "2026-07-15"
+
 
 class TestPlotKeywordRankingHistory:
     def test_invalid_input_raises_fastmcp_tool_error(self):

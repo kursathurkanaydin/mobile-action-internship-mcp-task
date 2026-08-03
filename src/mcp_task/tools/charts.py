@@ -1,11 +1,11 @@
 from fastmcp.exceptions import ToolError as FastMCPToolError
 
-from mcp_task.charting.dashboard import render_dashboard_html
+from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ranking_dashboard
 from mcp_task.charting.server import publish_html
 from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.app_service import fetch_app_by_track_id
-from mcp_task.services.keyword_service import fetch_keyword_ranking_history
+from mcp_task.services.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
 from mcp_task.validation import require_track_id_list
 
 
@@ -16,6 +16,58 @@ def _resolve_app_label(track_id: int, country_code: str) -> str:
     except ToolError:
         return f"App {track_id}"
     return app.get("trackName") or f"App {track_id}"
+
+
+@mcp.tool
+def plot_keyword_ranking(
+    track_id: int,
+    country_code: str,
+    keywords: str,
+    date: str | None = None,
+) -> dict:
+    """Show ONE app's current App Store ranking for one or more keywords as an interactive chart.
+
+    Same underlying data as get_keyword_ranking, drawn as a Chart.js bar chart
+    (one bar per keyword, shortest bar = best rank) with an iPhone/iPad toggle
+    button and a per-keyword breakdown table, instead of raw JSON. Use this
+    when the user wants to *see* how an app ranks across several keywords at
+    a glance (e.g. "chart app X's ranking for these keywords", "visualize app
+    X's keyword rankings"), as opposed to a single keyword's trend over time
+    (use plot_keyword_ranking_history for that) or comparing apps (use
+    compare_keyword_ranking_history for that). This is a single-day snapshot,
+    not a trend.
+
+    Returns a clickable URL (served from a local, loopback-only HTTP server)
+    that opens the interactive chart page in a browser.
+
+    IMPORTANT: this URL is only useful if the user can see and click it, so
+    you MUST paste the exact returned chart_url into your reply to the user
+    as a markdown link, e.g. "[View the keyword ranking chart]({chart_url})"
+    — do not just say the chart is ready without including the link itself.
+
+    Args:
+        track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).
+        country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
+        keywords: One or more keywords, comma-separated (e.g. "ticket,event,concert").
+        date: Optional date in YYYY-MM-DD format. Defaults to the most recent
+            available ranking day if omitted.
+    """
+    try:
+        rankings = fetch_keyword_ranking(track_id, country_code, keywords, date)
+    except ToolError as exc:
+        raise FastMCPToolError(exc.message) from exc
+
+    if not rankings:
+        raise FastMCPToolError(f"No ranking data found for the given keywords (track {track_id}, {country_code}).")
+
+    keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    app_name = _resolve_app_label(track_id, country_code)
+    snapshot_date = date or rankings[0].get("date", "")[:10]
+
+    chart_html = render_keyword_ranking_dashboard(rankings, keyword_list, app_name, country_code, snapshot_date)
+    chart_url = publish_html(chart_html)
+
+    return {"chart_url": chart_url}
 
 
 @mcp.tool
