@@ -1,4 +1,10 @@
+import json
+import logging
+
+from redis.exceptions import RedisError
+
 from mcp_task.clients.mobileaction import get
+from mcp_task.config import redis_client
 from mcp_task.validation import (
     require_country_code,
     require_date,
@@ -8,6 +14,10 @@ from mcp_task.validation import (
     require_text,
     require_track_id,
 )
+
+logger = logging.getLogger(__name__)
+
+_TOP_KEYWORDS_CACHE_SECONDS = 86400  # top keywords for a past day never change, so cache generously
 
 
 def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date: str | None) -> dict:
@@ -27,17 +37,42 @@ def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date:
 def fetch_top_keywords(
     track_id: int, country_code: str, date: str, device: str | None, limit: int | None
 ) -> dict:
-    """Validate inputs and fetch the keywords bringing an app the most search volume."""
+    """Validate inputs and fetch the keywords bringing an app the most search volume.
+
+    Cached in Redis per (track_id, country_code, date, device, limit) combination
+    to avoid re-spending MobileAction credits on a repeated query. A Redis outage
+    degrades to a plain live fetch rather than failing the tool call — caching is
+    an optimization, not something the tool should depend on to function.
+    """
     track_id = require_track_id(track_id)
     country_code = require_country_code(country_code)
     date = require_date(date, "date")
     device = require_device(device, required=False)
     limit = require_positive_int(limit, "limit")
 
-    return get(
+    cache_key = f"mcp:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
+
+    try:
+        cached = redis_client.get(cache_key)
+    except RedisError:
+        logger.warning("Redis unavailable reading %s, falling back to a live fetch", cache_key)
+        cached = None
+
+    if cached:
+        logger.info("cache hit for fetch_top_keywords key=%s", cache_key)
+        return json.loads(cached)
+
+    data = get(
         f"/appstore-keyword-ranking/{track_id}/{country_code}/top-keywords",
         params={"date": date, "device": device, "limit": limit},
     )
+
+    try:
+        redis_client.set(cache_key, json.dumps(data), ex=_TOP_KEYWORDS_CACHE_SECONDS)
+    except RedisError:
+        logger.warning("Redis unavailable writing %s, skipping cache write", cache_key)
+
+    return data
 
 
 def fetch_keyword_ranking_history(

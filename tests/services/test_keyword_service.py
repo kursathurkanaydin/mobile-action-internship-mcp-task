@@ -1,4 +1,7 @@
+import json
+
 import pytest
+from redis.exceptions import RedisError
 
 from mcp_task.errors import ToolError
 from mcp_task.services import keyword_service as ks
@@ -6,6 +9,27 @@ from mcp_task.services import keyword_service as ks
 
 def _no_call(*args, **kwargs):
     raise AssertionError("the MobileAction client should not be called for invalid input")
+
+
+class _FakeRedis:
+    """In-memory stand-in for redis_client so tests never touch a real Redis server."""
+
+    def __init__(self, existing: dict | None = None, raise_on_get: bool = False, raise_on_set: bool = False):
+        self._store = dict(existing or {})
+        self._raise_on_get = raise_on_get
+        self._raise_on_set = raise_on_set
+        self.set_calls = []
+
+    def get(self, key):
+        if self._raise_on_get:
+            raise RedisError("simulated redis GET failure")
+        return self._store.get(key)
+
+    def set(self, key, value, ex=None):
+        if self._raise_on_set:
+            raise RedisError("simulated redis SET failure")
+        self.set_calls.append((key, value, ex))
+        self._store[key] = value
 
 
 class TestFetchKeywordRanking:
@@ -38,23 +62,61 @@ class TestFetchKeywordRanking:
 class TestFetchTopKeywords:
     def test_invalid_limit_raises_before_any_request(self, monkeypatch):
         monkeypatch.setattr(ks, "get", _no_call)
+        monkeypatch.setattr(ks, "redis_client", _FakeRedis())
         with pytest.raises(ToolError):
             ks.fetch_top_keywords(529479190, "US", "2026-07-01", None, -5)
 
-    def test_valid_input_calls_client_with_expected_path_and_params(self, monkeypatch):
+    def test_cache_miss_calls_client_and_writes_the_cache(self, monkeypatch):
         captured = {}
+        fake_data = [{"keyword": "game", "searchVolume": 100, "rank": 3}]
 
         def fake_get(path, params):
             captured["path"] = path
             captured["params"] = params
-            return [{"keyword": "game", "searchVolume": 100, "rank": 3}]
+            return fake_data
 
+        fake_redis = _FakeRedis()
         monkeypatch.setattr(ks, "get", fake_get)
+        monkeypatch.setattr(ks, "redis_client", fake_redis)
+
         result = ks.fetch_top_keywords(529479190, "US", "2026-07-01", "iphone", 50)
 
         assert captured["path"] == "/appstore-keyword-ranking/529479190/US/top-keywords"
         assert captured["params"] == {"date": "2026-07-01", "device": "IPHONE", "limit": 50}
-        assert result == [{"keyword": "game", "searchVolume": 100, "rank": 3}]
+        assert result == fake_data
+
+        assert len(fake_redis.set_calls) == 1
+        cache_key, cached_json, ttl = fake_redis.set_calls[0]
+        assert cache_key == "mcp:top_keywords:529479190:US:2026-07-01:IPHONE:50"
+        assert json.loads(cached_json) == fake_data
+        assert ttl == ks._TOP_KEYWORDS_CACHE_SECONDS
+
+    def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
+        cache_key = "mcp:top_keywords:529479190:US:2026-07-01:all:default"
+        cached_data = [{"keyword": "game", "searchVolume": 100, "rank": 3}]
+        fake_redis = _FakeRedis(existing={cache_key: json.dumps(cached_data)})
+
+        monkeypatch.setattr(ks, "get", _no_call)
+        monkeypatch.setattr(ks, "redis_client", fake_redis)
+
+        result = ks.fetch_top_keywords(529479190, "US", "2026-07-01", None, None)
+        assert result == cached_data
+
+    def test_redis_read_failure_falls_back_to_a_live_fetch(self, monkeypatch):
+        fake_data = [{"keyword": "game", "rank": 3}]
+        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "redis_client", _FakeRedis(raise_on_get=True))
+
+        result = ks.fetch_top_keywords(529479190, "US", "2026-07-01", None, None)
+        assert result == fake_data
+
+    def test_redis_write_failure_does_not_fail_the_call(self, monkeypatch):
+        fake_data = [{"keyword": "game", "rank": 3}]
+        monkeypatch.setattr(ks, "get", lambda path, params: fake_data)
+        monkeypatch.setattr(ks, "redis_client", _FakeRedis(raise_on_set=True))
+
+        result = ks.fetch_top_keywords(529479190, "US", "2026-07-01", None, None)
+        assert result == fake_data
 
 
 class TestFetchKeywordRankingHistory:

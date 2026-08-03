@@ -35,7 +35,7 @@ you pass one keyword or four).
 | `get_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). | 5 |
 | `get_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. | 5 |
 | `get_keyword_ranking_history` | Rank history for one keyword for an app over a date range. | 10 |
-| `get_top_keywords` | Keywords bringing an app the most search volume. | 20 |
+| `get_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
 | `get_organic_keywords` | Full list of keywords an app organically ranks for. | **50** |
 
 **App lookup** (helper — calls Apple's free iTunes API, not MobileAction, since

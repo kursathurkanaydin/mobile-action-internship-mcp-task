@@ -1,6 +1,8 @@
 import os
 
+import redis
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -12,3 +14,8 @@ if not MOBILEACTION_API_KEY:
         "MOBILEACTION_API_KEY is not set. Add it to a .env file or export it as an "
         "environment variable before starting the server."
     )
+
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
