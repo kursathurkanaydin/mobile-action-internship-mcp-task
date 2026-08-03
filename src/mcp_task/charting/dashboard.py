@@ -34,15 +34,17 @@ def render_dashboard_html(
     start_date: str,
     end_date: str,
 ) -> bytes:
-    """Build a self-contained, interactive HTML dashboard comparing keyword ranking history.
+    """Build a self-contained, interactive HTML dashboard of keyword ranking history.
 
-    Draws the comparison as a live Chart.js line chart (rank per day, one
-    series per app), with an iPhone/iPad toggle button that swaps the chart,
-    stat cards, and summary table to that device's numbers — devices are kept
-    separate rather than merged, since an app's iPhone and iPad ranks can
-    differ a lot. Hovering a chart point shows its exact date/rank, legend
-    entries can be clicked to hide a series, and the Chart.js library itself
-    is embedded inline (no CDN) so the page works offline.
+    Works for one app (a single-app ranking chart) or several (a comparison),
+    just by the size of histories_by_app — the heading adapts automatically.
+    Draws a live Chart.js line chart (rank per day, one series per app), with
+    an iPhone/iPad toggle button that swaps the chart, stat cards, and summary
+    table to that device's numbers — devices are kept separate rather than
+    merged, since an app's iPhone and iPad ranks can differ a lot. Hovering a
+    chart point shows its exact date/rank, legend entries can be clicked to
+    hide a series, and the Chart.js library itself is embedded inline (no
+    CDN) so the page works offline.
     """
     cards_by_device, rows_by_device, chart_data_by_device = {}, {}, {}
     for device in _DEVICES:
@@ -57,12 +59,15 @@ def render_dashboard_html(
         chart_data_by_device[device] = _build_chart_view(histories_by_app, device)
 
     default_device = _DEVICES[0]
+    is_comparison = len(histories_by_app) > 1
 
     return _PAGE_TEMPLATE.format(
         keyword=escape(keyword),
         country_code=escape(country_code.upper()),
         start_date=escape(start_date),
         end_date=escape(end_date),
+        heading="Keyword Ranking Comparison" if is_comparison else "Keyword Ranking",
+        title_suffix="ranking comparison" if is_comparison else "ranking",
         device_toggle=_render_device_toggle(default_device),
         cards_sections=_render_device_sections("cards", cards_by_device, default_device),
         table_sections=_render_device_sections("", rows_by_device, default_device, wrap_as_table=True),
@@ -279,14 +284,14 @@ _PAGE_TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>"{keyword}" ranking comparison</title>
+<title>"{keyword}" {title_suffix}</title>
 <style>{css}</style>
 <script>{chartjs_source}</script>
 </head>
 <body>
   <div class="page">
     <header>
-      <h1>Keyword Ranking Comparison</h1>
+      <h1>{heading}</h1>
       <p class="subtitle">"{keyword}" &middot; {country_code} App Store &middot; {start_date} &rarr; {end_date}</p>
     </header>
 

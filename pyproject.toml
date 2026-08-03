@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "fastmcp>=3.4.5",
-    "matplotlib>=3.10.9",
     "python-dotenv>=1.2.2",
 ]
 

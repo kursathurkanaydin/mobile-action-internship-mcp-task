@@ -25,6 +25,28 @@ class TestRenderDashboardHtml:
         assert "US App Store" in text
         assert "2026-07-01" in text and "2026-07-10" in text
 
+    def test_heading_is_singular_for_one_app_and_comparison_for_multiple(self):
+        single_html = render_dashboard_html(
+            {"Clash of Clans": [_entry("2026-07-01T00:00:00", 12)]}, "strategy", "US", "2026-07-01", "2026-07-01"
+        ).decode()
+        multi_html = render_dashboard_html(
+            {
+                "Clash of Clans": [_entry("2026-07-01T00:00:00", 12)],
+                "Clash Royale": [_entry("2026-07-01T00:00:00", 20)],
+            },
+            "strategy",
+            "US",
+            "2026-07-01",
+            "2026-07-01",
+        ).decode()
+
+        assert "<h1>Keyword Ranking</h1>" in single_html
+        assert "<title>\"strategy\" ranking</title>" in single_html
+        assert "Comparison" not in single_html
+
+        assert "<h1>Keyword Ranking Comparison</h1>" in multi_html
+        assert "<title>\"strategy\" ranking comparison</title>" in multi_html
+
     def test_chartjs_is_embedded_inline_not_via_cdn(self):
         histories = {"App A": [_entry("2026-07-01T00:00:00", 5)]}
         text = render_dashboard_html(histories, "kw", "US", "2026-07-01", "2026-07-01").decode()

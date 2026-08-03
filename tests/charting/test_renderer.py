@@ -1,8 +1,6 @@
 from datetime import datetime
 
-from mcp_task.charting.renderer import best_rank_series, render_ranking_history_chart
-
-_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+from mcp_task.charting.renderer import best_rank_series
 
 
 def _entry(date: str, rank, device: str = "IPHONE"):
@@ -54,19 +52,3 @@ class TestBestRankSeries:
     def test_device_filter_with_no_matching_entries_returns_empty_list(self):
         history = [_entry("2026-07-01T00:00:00", 20, "IPHONE")]
         assert best_rank_series(history, device="IPAD") == []
-
-
-class TestRenderRankingHistoryChart:
-    def test_returns_valid_png_bytes(self):
-        history = [
-            _entry("2026-07-01T00:00:00", 20, "IPHONE"),
-            _entry("2026-07-02T00:00:00", 18, "IPHONE"),
-            _entry("2026-07-01T00:00:00", 15, "IPAD"),
-        ]
-        png_bytes = render_ranking_history_chart(history, "strategy", "US", 529479190)
-        assert png_bytes.startswith(_PNG_MAGIC)
-        assert len(png_bytes) > 0
-
-    def test_handles_empty_history_without_crashing(self):
-        png_bytes = render_ranking_history_chart([], "strategy", "US", 529479190)
-        assert png_bytes.startswith(_PNG_MAGIC)

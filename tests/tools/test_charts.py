@@ -21,12 +21,28 @@ class TestPlotKeywordRankingHistory:
         with pytest.raises(FastMCPToolError, match="No ranking history found"):
             charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-05")
 
-    def test_success_returns_chart_url_from_publish_chart(self, monkeypatch):
+    def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
-        monkeypatch.setattr(charts, "publish_chart", lambda png_bytes: "http://127.0.0.1:9/fake.png")
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
         result = charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
-        assert result == {"chart_url": "http://127.0.0.1:9/fake.png"}
+        assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
+
+    def test_dashboard_is_built_for_a_single_app(self, monkeypatch):
+        captured = {}
+
+        def fake_render(histories_by_app, keyword, country_code, start_date, end_date):
+            captured["histories_by_app"] = histories_by_app
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "render_dashboard_html", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
+        assert captured["histories_by_app"] == {"Clash of Clans": _HISTORY}
 
 
 class TestResolveAppLabel:

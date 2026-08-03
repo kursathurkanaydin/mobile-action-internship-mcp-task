@@ -1,13 +1,21 @@
 from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.dashboard import render_dashboard_html
-from mcp_task.charting.renderer import render_ranking_history_chart
-from mcp_task.charting.server import publish_chart, publish_html
+from mcp_task.charting.server import publish_html
 from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.app_service import fetch_app_by_track_id
 from mcp_task.services.keyword_service import fetch_keyword_ranking_history
 from mcp_task.validation import require_track_id_list
+
+
+def _resolve_app_label(track_id: int, country_code: str) -> str:
+    """Best-effort app name lookup for a chart/table label; falls back to the track id."""
+    try:
+        app = fetch_app_by_track_id(track_id, country_code)
+    except ToolError:
+        return f"App {track_id}"
+    return app.get("trackName") or f"App {track_id}"
 
 
 @mcp.tool
@@ -18,12 +26,13 @@ def plot_keyword_ranking_history(
     start_date: str,
     end_date: str,
 ) -> dict:
-    """Render a line chart of ONE app's App Store ranking history for a keyword.
+    """Render ONE app's App Store ranking history for a keyword as an interactive chart.
 
-    Same underlying data as get_keyword_ranking_history, plotted as rank-over-time
-    (one line per device: iPhone/iPad) instead of raw JSON. Use this when the user
-    wants to *see* a single app's trend rather than read numbers (e.g. "graph app
-    X's rank for keyword Y over the last month", "show me a chart of the ranking
+    Same underlying data as get_keyword_ranking_history, drawn as a live
+    Chart.js line chart with an iPhone/iPad toggle button (hover a point for
+    its exact date/rank) instead of raw JSON. Use this when the user wants to
+    *see* a single app's trend rather than read numbers (e.g. "graph app X's
+    rank for keyword Y over the last month", "show me a chart of the ranking
     history"). The date range should not exceed 30 days per request.
 
     Do NOT call this once per app to compare multiple apps — if the user gives
@@ -32,7 +41,7 @@ def plot_keyword_ranking_history(
     dashboard rather than separate charts you'd have to describe yourself.
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
-    that opens the chart PNG in a browser.
+    that opens the interactive chart page in a browser.
 
     IMPORTANT: this URL is only useful if the user can see and click it, so
     you MUST paste the exact returned chart_url into your reply to the user
@@ -57,19 +66,11 @@ def plot_keyword_ranking_history(
             f"{start_date} to {end_date})."
         )
 
-    png_bytes = render_ranking_history_chart(history, keyword, country_code, track_id)
-    chart_url = publish_chart(png_bytes)
+    label = _resolve_app_label(track_id, country_code)
+    chart_html = render_dashboard_html({label: history}, keyword, country_code, start_date, end_date)
+    chart_url = publish_html(chart_html)
 
     return {"chart_url": chart_url}
-
-
-def _resolve_app_label(track_id: int, country_code: str) -> str:
-    """Best-effort app name lookup for a chart/table label; falls back to the track id."""
-    try:
-        app = fetch_app_by_track_id(track_id, country_code)
-    except ToolError:
-        return f"App {track_id}"
-    return app.get("trackName") or f"App {track_id}"
 
 
 @mcp.tool
