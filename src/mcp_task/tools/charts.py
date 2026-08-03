@@ -82,10 +82,19 @@ def plot_keyword_ranking_history(
 
     Same underlying data as get_keyword_ranking_history, drawn as a live
     Chart.js line chart with an iPhone/iPad toggle button (hover a point for
-    its exact date/rank) instead of raw JSON. Use this when the user wants to
-    *see* a single app's trend rather than read numbers (e.g. "graph app X's
-    rank for keyword Y over the last month", "show me a chart of the ranking
-    history"). The date range should not exceed 30 days per request.
+    its exact date/rank) instead of raw JSON.
+
+    Only call this tool if the request contains an EXPLICIT visual keyword:
+    "chart", "graph", "plot", "visualize", "draw", or "show me a
+    chart/graph/graphic" (e.g. "graph app X's rank for keyword Y over the
+    last month", "show me a chart of the ranking history"). Generic
+    trend/change wording with NO such keyword — "how has app X's rank
+    changed", "nasıl değişmiş", "what's the trend", "how did it move over
+    time" — is NOT enough by itself; that default case is
+    get_keyword_ranking_history's job, not this tool's, even though asking
+    "how has X changed" is inherently about a trend over time. When in doubt
+    (no explicit visual keyword), prefer get_keyword_ranking_history. The
+    date range should not exceed 30 days per request.
 
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare (vs, side-by-side, "which one ranks better"),

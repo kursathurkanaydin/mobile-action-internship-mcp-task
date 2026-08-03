@@ -71,27 +71,27 @@ get_remaining_api_credits
 
 get_keyword_ranking
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/keywordrankings
-      ?keywords=strategy&token=YOUR_API_KEY
+      ?keywords=strategy&token=YOUR_MOBILEACTION_API_KEY
 
 get_top_keywords
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/top-keywords
-      ?date=2026-07-01&token=YOUR_API_KEY
+      ?date=2026-07-01&token=YOUR_MOBILEACTION_API_KEY
 
 get_keyword_ranking_history
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/strategy/keywordrankings
-      ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_API_KEY
+      ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_MOBILEACTION_API_KEY
 
 get_keyword_metadata
   GET https://api.mobileaction.co/appstore-keyword-ranking/US/keyword-metadata
-      ?keyword=strategy&token=YOUR_API_KEY
+      ?keyword=strategy&token=YOUR_MOBILEACTION_API_KEY
 
 get_apps_for_keyword
   GET https://api.mobileaction.co/appstore-keyword-ranking/US/keyword-apps
-      ?keyword=strategy&token=YOUR_API_KEY
+      ?keyword=strategy&token=YOUR_MOBILEACTION_API_KEY
 
 get_organic_keywords
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/IPHONE/organic-keywords
-      ?date=2026-07-01&token=YOUR_API_KEY
+      ?date=2026-07-01&token=YOUR_MOBILEACTION_API_KEY
 
 get_app_store_id                                 (Apple's iTunes API, not MobileAction)
   GET https://itunes.apple.com/search?term=Clash+of+Clans&entity=software&country=us&limit=1

@@ -78,21 +78,28 @@ def get_keyword_ranking_history(
     start_date: str,
     end_date: str,
 ) -> dict:
-    """Get ONE app's App Store ranking history for a single keyword over a date range.
+    """Get ONE app's RAW App Store ranking history for a single keyword over a date range.
 
     Returns one rank entry per day (per device: iPhone/iPad) between start_date
-    and end_date, inclusive. Use this when the user asks how a keyword's rank
-    changed over time for a single app (e.g. "how has app X's rank for keyword Y
-    trended over the last month"), as opposed to a single day's rank (use
-    get_keyword_ranking for that).
+    and end_date, inclusive, as plain data — no chart, no image, no URL. This
+    is the DEFAULT tool for any question about a keyword's trend over time —
+    "how has app X's rank for keyword Y changed/trended/moved over the last
+    month", "what's the trend", "list the daily ranks" — as opposed to a
+    single day's rank (use get_keyword_ranking for that). A question being
+    *about* a trend over time does NOT by itself mean the user wants a chart.
+
+    Only use plot_keyword_ranking_history instead if the request contains an
+    EXPLICIT visual keyword: "chart", "graph", "plot", "visualize", "draw", or
+    "show me a chart/graph/graphic". Plain trend/change wording like "nasıl
+    değişmiş", "how has it changed", "what's the trend" — with no such
+    keyword — stays with THIS tool, even though the underlying data is
+    identical either way.
 
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare/vs/side-by-side for the same keyword (with or
     without asking for a "dashboard" or "chart"), use
     compare_keyword_ranking_history instead; it fetches every app's history
     itself in one call and renders the comparison, which this tool cannot do.
-    Similarly, if the user wants a single app's trend as a chart rather than
-    raw numbers, use plot_keyword_ranking_history instead.
 
     The date range should not exceed 30 days per request.
 
