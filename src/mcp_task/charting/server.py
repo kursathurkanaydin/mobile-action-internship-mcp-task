@@ -47,9 +47,19 @@ def _ensure_server_running() -> int:
         return port
 
 
+def _publish(content: bytes, extension: str) -> str:
+    """Save content under the local chart server's directory and return its URL."""
+    port = _ensure_server_running()
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    (_CHARTS_DIR / filename).write_bytes(content)
+    return f"http://127.0.0.1:{port}/{filename}"
+
+
 def publish_chart(png_bytes: bytes) -> str:
     """Save a chart PNG and return a clickable http://127.0.0.1 URL for it."""
-    port = _ensure_server_running()
-    filename = f"{uuid.uuid4().hex}.png"
-    (_CHARTS_DIR / filename).write_bytes(png_bytes)
-    return f"http://127.0.0.1:{port}/{filename}"
+    return _publish(png_bytes, "png")
+
+
+def publish_html(html_bytes: bytes) -> str:
+    """Save an HTML page and return a clickable http://127.0.0.1 URL for it."""
+    return _publish(html_bytes, "html")

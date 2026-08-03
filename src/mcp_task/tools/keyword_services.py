@@ -133,15 +133,23 @@ def get_keyword_ranking_history(
     start_date: str,
     end_date: str,
 ) -> dict:
-    """Get an app's App Store ranking history for a single keyword over a date range.
+    """Get ONE app's App Store ranking history for a single keyword over a date range.
 
     Returns one rank entry per day (per device: iPhone/iPad) between start_date
     and end_date, inclusive. Use this when the user asks how a keyword's rank
-    changed over time (e.g. "how has app X's rank for keyword Y trended over
-    the last month"), as opposed to a single day's rank (use get_keyword_ranking
-    for that). The date range should not exceed 30 days per request. If the user
-    wants to *see* the trend as a chart rather than read the raw numbers, use
-    plot_keyword_ranking_history instead.
+    changed over time for a single app (e.g. "how has app X's rank for keyword Y
+    trended over the last month"), as opposed to a single day's rank (use
+    get_keyword_ranking for that).
+
+    Do NOT call this once per app to compare multiple apps — if the user gives
+    two or more apps to compare/vs/side-by-side for the same keyword (with or
+    without asking for a "dashboard" or "chart"), use
+    compare_keyword_ranking_history instead; it fetches every app's history
+    itself in one call and renders the comparison, which this tool cannot do.
+    Similarly, if the user wants a single app's trend as a chart rather than
+    raw numbers, use plot_keyword_ranking_history instead.
+
+    The date range should not exceed 30 days per request.
 
     Args:
         track_id: The app's numeric App Store id (e.g. 366562751 for Clash of Clans).
