@@ -1,5 +1,5 @@
 from mcp_task.clients.mobileaction import get
-from mcp_task.errors import ToolInputError, to_error_response
+from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
 
 
@@ -12,7 +12,7 @@ def get_remaining_api_credits() -> dict:
     """
     try:
         data = get("/api-key")
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return data

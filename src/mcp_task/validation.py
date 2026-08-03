@@ -1,13 +1,13 @@
 import re
 from datetime import datetime
 
-from mcp_task.errors import ToolInputError
+from mcp_task.errors import ToolError
 
 _COUNTRY_CODE_RE = re.compile(r"^[A-Za-z]{2}$")
 _VALID_DEVICES = {"IPHONE", "IPAD"}
 
 
-class InputValidationError(ToolInputError):
+class InputValidationError(ToolError):
     """A clean, user-facing error for a bad tool input (empty/malformed/out of range)."""
 
 

@@ -1,11 +1,11 @@
 import httpx
 
-from mcp_task.errors import ToolInputError
+from mcp_task.errors import ToolError
 
 _TIMEOUT = 15
 
 
-class AppLookupError(ToolInputError):
+class AppLookupError(ToolError):
     """A clean, user-facing error for an iTunes lookup that failed or found nothing."""
 
 

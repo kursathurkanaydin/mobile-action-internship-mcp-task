@@ -1,5 +1,5 @@
 from mcp_task.clients.mobileaction import get
-from mcp_task.errors import ToolInputError, to_error_response
+from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
 from mcp_task.validation import (
     require_country_code,
@@ -48,7 +48,7 @@ def get_keyword_ranking(
     """
     try:
         data = _fetch_keyword_ranking(track_id, country_code, keywords, date)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {"rankings": data}
@@ -94,7 +94,7 @@ def get_top_keywords(
     """
     try:
         data = _fetch_top_keywords(track_id, country_code, date, device, limit)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {"top_keywords": data}
@@ -152,7 +152,7 @@ def get_keyword_ranking_history(
     """
     try:
         data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {"history": data}
@@ -184,7 +184,7 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
     """
     try:
         data = _fetch_keyword_metadata(country_code, keyword)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {"metadata": data}
@@ -217,7 +217,7 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """
     try:
         data = _fetch_apps_for_keyword(country_code, keyword)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {"apps": data}
@@ -276,7 +276,7 @@ def get_organic_keywords(
     """
     try:
         data = _fetch_organic_keywords(track_id, country_code, device, date, limit)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     rankings = data.get("rankings", [])

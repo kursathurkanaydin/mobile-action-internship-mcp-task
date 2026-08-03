@@ -1,4 +1,4 @@
-class ToolInputError(Exception):
+class ToolError(Exception):
     """Base for clean, user-facing tool errors.
 
     .message is always safe to show to the user/model. .status_code is set
@@ -13,6 +13,6 @@ class ToolInputError(Exception):
         self.status_code = status_code
 
 
-def to_error_response(exc: ToolInputError) -> dict:
-    """Shape any ToolInputError into the {"error", "status_code"} dict tools return on failure."""
+def to_error_response(exc: ToolError) -> dict:
+    """Shape any ToolError into the {"error", "status_code"} dict tools return on failure."""
     return {"error": exc.message, "status_code": exc.status_code}

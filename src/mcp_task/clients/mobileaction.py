@@ -3,7 +3,7 @@ import logging
 import httpx
 
 from mcp_task.config import MOBILEACTION_API_KEY, MOBILEACTION_BASE_URL
-from mcp_task.errors import ToolInputError
+from mcp_task.errors import ToolError
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ _STATUS_MESSAGES = {
 }
 
 
-class MobileActionAPIError(ToolInputError):
+class MobileActionAPIError(ToolError):
     """A clean, user-facing error for any failure talking to the MobileAction API."""
 
 

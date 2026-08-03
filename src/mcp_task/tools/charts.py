@@ -1,8 +1,8 @@
-from fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.renderer import render_ranking_history_chart
 from mcp_task.charting.server import publish_chart
-from mcp_task.errors import ToolInputError
+from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
 from mcp_task.tools.keyword_services import fetch_keyword_ranking_history
 
@@ -40,11 +40,11 @@ def plot_keyword_ranking_history(
     """
     try:
         history = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except ToolInputError as exc:
-        raise ToolError(exc.message) from exc
+    except ToolError as exc:
+        raise FastMCPToolError(exc.message) from exc
 
     if not history:
-        raise ToolError(
+        raise FastMCPToolError(
             f"No ranking history found for '{keyword}' (track {track_id}, {country_code}, "
             f"{start_date} to {end_date})."
         )

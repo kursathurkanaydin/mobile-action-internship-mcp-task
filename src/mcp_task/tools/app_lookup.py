@@ -1,5 +1,5 @@
 from mcp_task.clients.itunes import lookup_app, search_app
-from mcp_task.errors import ToolInputError, to_error_response
+from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
 from mcp_task.validation import require_country_code, require_text, require_track_id
 
@@ -25,7 +25,7 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
     """
     try:
         app = _fetch_app_by_name(app_name, country)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {
@@ -55,7 +55,7 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
     """
     try:
         app = _fetch_app_by_track_id(track_id, country)
-    except ToolInputError as exc:
+    except ToolError as exc:
         return to_error_response(exc)
 
     return {
