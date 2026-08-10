@@ -31,12 +31,12 @@ you pass one keyword or four).
 **Keyword Services** (MobileAction `/appstore-keyword-ranking/*`)
 | Tool | Description | Credits/call |
 |---|---|---|
-| `get_keyword_ranking` | Current rank for one or more keywords, one day. | 3 |
-| `get_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). | 5 |
-| `get_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. | 5 |
-| `get_keyword_ranking_history` | Rank history for one keyword for an app over a date range. | 10 |
+| `get_keyword_ranking` | Current rank for one or more keywords, one day. **Redis-cached for 24h** when a `date` is given (bonus) — an undated "most recent" query always fetches live. | 3, 0 on a cache hit |
+| `get_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
+| `get_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
+| `get_keyword_ranking_history` | Rank history for one keyword for an app over a date range. **Redis-cached for 24h** (bonus). | 10, 0 on a cache hit |
 | `get_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
-| `get_organic_keywords` | Full list of keywords an app organically ranks for. | **50** |
+| `get_organic_keywords` | Full list of keywords an app organically ranks for. **Redis-cached for 24h** (bonus). | **50**, 0 on a cache hit |
 
 **App lookup** (helper — calls Apple's free iTunes API, not MobileAction, since
 MobileAction's endpoints need a numeric `trackId` rather than an app name)
@@ -125,10 +125,15 @@ cp .env.example .env
 The key is read from this environment variable at startup (`src/mcp_task/config.py`);
 it is never hardcoded, and `.env` is gitignored.
 
+**Redis (optional):** the endpoints marked "Redis-cached" above cache their
+response for 24h behind a `REDIS_URL` env var (defaults to
+`redis://localhost:6379/0`). Redis isn't required to run the server — if it's
+unreachable, every cached tool just falls back to a live API call.
+
 ## Running it standalone (sanity check)
 
 ```bash
-uv run src/mcp-task/server.py
+uv run src/mcp_task/server.py
 ```
 
 This starts listening on stdio. Press
@@ -138,7 +143,7 @@ key is picked up; a real client (below) is how you actually use it.
 ## Connecting with MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector uv run src/mcp-task/server.py
+npx @modelcontextprotocol/inspector uv run src/mcp_task/server.py
 ```
 
 This opens a browser UI listing every tool, where you can fill in parameters
