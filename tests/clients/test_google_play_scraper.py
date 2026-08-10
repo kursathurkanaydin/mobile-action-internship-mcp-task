@@ -1,4 +1,7 @@
-from google_play_scraper.exceptions import NotFoundError
+from urllib.error import URLError
+
+import pytest
+from google_play_scraper.exceptions import ExtraHTTPError, NotFoundError
 
 from mcp_task.clients import google_play_scraper as gps
 
@@ -49,3 +52,23 @@ class TestSearchApps:
     def test_no_results_returns_empty_list(self, monkeypatch):
         monkeypatch.setattr(gps, "_search", lambda query, n_hits, lang, country: [])
         assert gps.search_apps("nonsense", "us", "en") == []
+
+    def test_network_error_raises_play_store_search_error_not_empty_list(self, monkeypatch):
+        # a genuine failure must not look identical to "zero matches" —
+        # returning [] here would silently misrepresent an unknown result
+        def raise_network_error(*a, **k):
+            raise URLError("Name or service not known")
+
+        monkeypatch.setattr(gps, "_search", raise_network_error)
+        with pytest.raises(gps.PlayStoreSearchError, match="Network error") as exc_info:
+            gps.search_apps("WhatsApp", "us", "en")
+        assert exc_info.value.error_type == "network"
+
+    def test_extra_http_error_raises_play_store_search_error(self, monkeypatch):
+        def raise_http_error(*a, **k):
+            raise ExtraHTTPError("Status code 429 returned")
+
+        monkeypatch.setattr(gps, "_search", raise_http_error)
+        with pytest.raises(gps.PlayStoreSearchError, match="Google Play search failed") as exc_info:
+            gps.search_apps("WhatsApp", "us", "en")
+        assert exc_info.value.error_type == "upstream_api"

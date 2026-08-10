@@ -1,4 +1,4 @@
-from mcp_task.errors import ToolError, to_error_response
+from mcp_task.errors import handle_tool_errors
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.playstore.app_service import (
     fetch_app_by_track_id,
@@ -12,6 +12,7 @@ def _app_url(track_id: str) -> str:
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en") -> dict:
     """Search Google Play by app name for candidate package ids.
 
@@ -36,17 +37,14 @@ def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en")
         country: Two-letter Play Store country code to search in, e.g. "us", "tr".
         lang_code: Two-letter language code for the returned names, e.g. "en", "tr".
     """
-    try:
-        apps = fetch_apps_by_name(query, country, lang_code)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    apps = fetch_apps_by_name(query, country, lang_code)
     return {
         "apps": [{"app_id": app["appId"], "name": app["title"], "url": _app_url(app["appId"])} for app in apps],
     }
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
     """Look up a Google Play app's name and details by its package id or Play Store URL.
 
@@ -62,11 +60,7 @@ def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
             or a full Play Store app URL containing "?id=...".
         lang_code: Two-letter language code for the returned name/description, e.g. "en", "tr".
     """
-    try:
-        app = fetch_app_by_track_id(track_id, lang_code)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    app = fetch_app_by_track_id(track_id, lang_code)
     return {
         "app_id": app["trackId"],
         "name": app["name"],
@@ -75,6 +69,7 @@ def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_app_names_batch(track_ids: str, lang_code: str = "en") -> dict:
     """Look up names/details for MULTIPLE Google Play package ids in one request.
 
@@ -93,11 +88,7 @@ def get_playstore_app_names_batch(track_ids: str, lang_code: str = "en") -> dict
             (default 300, configurable via env var) per call.
         lang_code: Two-letter language code for the returned names, e.g. "en", "tr".
     """
-    try:
-        requested_ids, apps = fetch_apps_by_track_ids(track_ids, lang_code)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    requested_ids, apps = fetch_apps_by_track_ids(track_ids, lang_code)
     found_ids = {app["trackId"] for app in apps}
 
     return {

@@ -139,6 +139,18 @@ class TestFetchAppsByName:
         monkeypatch.setattr(pas, "search_apps", lambda query, country, lang_code: [])
         assert pas.fetch_apps_by_name("nonsense") == []
 
+    def test_search_failure_propagates_as_a_tool_error(self, monkeypatch):
+        # a genuine search failure (network error, Google blocking the
+        # scraper) must surface, not be swallowed into an empty result
+        def raise_search_error(query, country, lang_code):
+            from mcp_task.clients.google_play_scraper import PlayStoreSearchError
+
+            raise PlayStoreSearchError("Network error while searching Google Play: timeout")
+
+        monkeypatch.setattr(pas, "search_apps", raise_search_error)
+        with pytest.raises(ToolError, match="Network error"):
+            pas.fetch_apps_by_name("WhatsApp")
+
     def test_not_cached(self, monkeypatch):
         # a live search, not a fixed id-keyed record — must never touch redis
         monkeypatch.setattr(pas, "search_apps", lambda query, country, lang_code: [])

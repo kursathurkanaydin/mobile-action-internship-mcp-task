@@ -16,7 +16,23 @@ _STATUS_MESSAGES = {
 
 
 class MobileActionAPIError(ToolError):
-    """A clean, user-facing error for any failure talking to the MobileAction API."""
+    """A clean, user-facing error for any failure talking to the MobileAction API.
+
+    error_type is derived from status_code when not given explicitly: no
+    status_code means the request never got a response (network failure),
+    404 means the resource doesn't exist, anything else is an upstream API
+    problem unrelated to the caller's input.
+    """
+
+    def __init__(self, message: str, status_code: int | None = None, error_type: str | None = None):
+        if error_type is None:
+            if status_code is None:
+                error_type = "network"
+            elif status_code == 404:
+                error_type = "not_found"
+            else:
+                error_type = "upstream_api"
+        super().__init__(message, status_code=status_code, error_type=error_type)
 
 
 def get(path: str, params: dict | None = None) -> dict | list | None:

@@ -334,14 +334,32 @@ Follow the same three-layer path every existing tool takes:
    call in `services/cache.py`'s `cached()` if the response is safe to cache
    — i.e. the inputs pin down a concrete/historical result, not "whatever is
    most recent right now."
-3. **Tool** (`tools/<store>/`) — a thin `@mcp.tool` function: call the
-   service, catch `ToolError` and return `to_error_response(exc)`, otherwise
-   shape the service's return value into the tool's response dict. Nothing
-   else to wire up — `mcp_instance.py` finds it automatically at startup.
+3. **Tool** (`tools/<store>/`) — a thin function stacking both decorators:
+   `@mcp.tool` outermost, `@handle_tool_errors` under it. The body just calls
+   the service and shapes its return value into the tool's response dict —
+   no try/except needed; `handle_tool_errors` catches `ToolError` (via
+   `to_error_response`) *and* anything unexpected (a malformed API response,
+   a third-party library edge case) so a bug never leaks a raw Python
+   exception to the model. Nothing else to wire up — `mcp_instance.py` finds
+   the tool automatically at startup.
 
 Then mirror the same `<store>/` path under `tests/` for each layer you
 touched, and add a row to the relevant credits table + an entry in
 `example_prompts_<store>.txt` in this README.
+
+### Error handling
+
+Every tool that fails returns `{"error": str, "status_code": int | None, "error_type": str}`
+instead of raising — `status_code` alone can't tell "bad input" apart from
+"not found" apart from "network hiccup" (all three leave it `None`), so
+`error_type` is the explicit, machine-readable category (`errors.py`'s
+`ToolError` docstring has the full list: `validation`, `not_found`,
+`upstream_api`, `network`, `internal`). Each `ToolError` subclass
+(`InputValidationError`, `MobileActionAPIError`, `AppLookupError`,
+`PlayStoreSearchError`) sets a sensible default and overrides it per raise
+site when one subclass covers more than one situation — e.g.
+`MobileActionAPIError` derives it from `status_code` automatically (`None` →
+`network`, `404` → `not_found`, anything else → `upstream_api`).
 
 Not store-specific (like `tools/account.py` or `services/cache.py`)? Put it
 at the top level of `services/`/`tools/` instead of under a store folder.

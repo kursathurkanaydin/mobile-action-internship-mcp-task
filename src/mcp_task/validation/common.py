@@ -9,6 +9,8 @@ _COUNTRY_CODE_RE = re.compile(r"^[A-Za-z]{2}$")
 class InputValidationError(ToolError):
     """A clean, user-facing error for a bad tool input (empty/malformed/out of range)."""
 
+    error_type = "validation"
+
 
 def require_country_code(country_code: str, upper: bool = True) -> str:
     stripped = (country_code or "").strip()

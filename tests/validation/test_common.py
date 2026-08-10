@@ -10,6 +10,11 @@ from mcp_task.validation.common import (
 )
 
 
+class TestInputValidationError:
+    def test_error_type_is_validation(self):
+        assert InputValidationError("bad input").error_type == "validation"
+
+
 class TestRequireCountryCode:
     @pytest.mark.parametrize("raw, expected", [("US", "US"), ("us", "US"), (" tr ", "TR")])
     def test_valid_codes_are_uppercased_by_default(self, raw, expected):

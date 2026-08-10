@@ -1,4 +1,4 @@
-from mcp_task.errors import ToolError, to_error_response
+from mcp_task.errors import handle_tool_errors
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.keyword_service import (
     fetch_apps_for_keyword,
@@ -11,6 +11,7 @@ from mcp_task.services.appstore.keyword_service import (
 
 
 @mcp.tool
+@handle_tool_errors
 def get_keyword_ranking(
     track_id: int,
     country_code: str,
@@ -32,15 +33,12 @@ def get_keyword_ranking(
         date: Optional date in YYYY-MM-DD format. Defaults to the most recent
             available ranking day if omitted.
     """
-    try:
-        data = fetch_keyword_ranking(track_id, country_code, keywords, date)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_ranking(track_id, country_code, keywords, date)
     return {"rankings": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_top_keywords(
     track_id: int,
     country_code: str,
@@ -62,15 +60,12 @@ def get_top_keywords(
         device: Optional device filter, "IPHONE" or "IPAD". Defaults to all devices.
         limit: Optional max number of keywords to return, e.g. 150.
     """
-    try:
-        data = fetch_top_keywords(track_id, country_code, date, device, limit)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_top_keywords(track_id, country_code, date, device, limit)
     return {"top_keywords": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_keyword_ranking_history(
     track_id: int,
     country_code: str,
@@ -116,15 +111,12 @@ def get_keyword_ranking_history(
         start_date: History start date, inclusive, in YYYY-MM-DD format.
         end_date: History end date, inclusive, in YYYY-MM-DD format.
     """
-    try:
-        data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
     return {"history": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Get metadata about a keyword in the App Store: search volume, popularity,
     detected language, how many iPhone/iPad apps target it, and its brand app.
@@ -137,15 +129,12 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
         keyword: A single keyword to get metadata for.
     """
-    try:
-        data = fetch_keyword_metadata(country_code, keyword)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_metadata(country_code, keyword)
     return {"metadata": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """Get the list of apps that rank in the App Store for a given keyword.
 
@@ -163,11 +152,7 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
         keyword: A single keyword to find ranking apps for.
     """
-    try:
-        data = fetch_apps_for_keyword(country_code, keyword)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_apps_for_keyword(country_code, keyword)
     return {"apps": data}
 
 
@@ -181,6 +166,7 @@ _ORGANIC_KEYWORDS_MAX_LIMIT = 1000
 
 
 @mcp.tool
+@handle_tool_errors
 def get_organic_keywords(
     track_id: int,
     country_code: str,
@@ -208,10 +194,7 @@ def get_organic_keywords(
         limit: Max number of keywords to return, sorted by best rank first.
             Defaults to and is capped at 100 to avoid oversized responses.
     """
-    try:
-        data = fetch_organic_keywords(track_id, country_code, device, date, limit)
-    except ToolError as exc:
-        return to_error_response(exc)
+    data = fetch_organic_keywords(track_id, country_code, device, date, limit)
 
     rankings = data.get("rankings", [])
     capped_limit = max(1, min(limit, _ORGANIC_KEYWORDS_MAX_LIMIT))

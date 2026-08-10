@@ -10,11 +10,11 @@ class TestGetKeywordRanking:
 
     def test_service_error_returns_error_shape(self, monkeypatch):
         def raise_error(*a):
-            raise ToolError("out of credits", status_code=429)
+            raise ToolError("out of credits", status_code=429, error_type="upstream_api")
 
         monkeypatch.setattr(ks, "fetch_keyword_ranking", raise_error)
         result = ks.get_keyword_ranking(529479190, "US", "strategy")
-        assert result == {"error": "out of credits", "status_code": 429}
+        assert result == {"error": "out of credits", "status_code": 429, "error_type": "upstream_api"}
 
 
 class TestGetTopKeywords:
@@ -26,11 +26,11 @@ class TestGetTopKeywords:
 
     def test_service_error_returns_error_shape(self, monkeypatch):
         def raise_error(*a):
-            raise ToolError("bad input")
+            raise ToolError("bad input", error_type="validation")
 
         monkeypatch.setattr(ks, "fetch_top_keywords", raise_error)
         result = ks.get_top_keywords(529479190, "US", "2026-07-01", limit=-5)
-        assert result == {"error": "bad input", "status_code": None}
+        assert result == {"error": "bad input", "status_code": None, "error_type": "validation"}
 
 
 class TestGetKeywordRankingHistory:

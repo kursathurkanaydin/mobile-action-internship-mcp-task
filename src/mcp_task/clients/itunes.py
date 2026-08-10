@@ -6,7 +6,15 @@ _TIMEOUT = 15
 
 
 class AppLookupError(ToolError):
-    """A clean, user-facing error for an iTunes lookup that failed or found nothing."""
+    """A clean, user-facing error for an iTunes lookup that failed or found nothing.
+
+    Defaults to error_type "not_found" (its most common cause); the
+    HTTPError-catching sites below override it to "network" since that
+    branch also covers non-2xx statuses from raise_for_status(), not just
+    connectivity failures.
+    """
+
+    error_type = "not_found"
 
 
 def search_app(app_name: str, country: str) -> dict:
@@ -19,7 +27,7 @@ def search_app(app_name: str, country: str) -> dict:
         )
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise AppLookupError(f"Failed to search the App Store: {exc}") from exc
+        raise AppLookupError(f"Failed to search the App Store: {exc}", error_type="network") from exc
 
     results = response.json().get("results", [])
     if not results:
@@ -38,7 +46,7 @@ def lookup_app(track_id: int, country: str) -> dict:
         )
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise AppLookupError(f"Failed to look up the App Store id: {exc}") from exc
+        raise AppLookupError(f"Failed to look up the App Store id: {exc}", error_type="network") from exc
 
     results = response.json().get("results", [])
     if not results:
@@ -65,6 +73,6 @@ def lookup_apps(track_ids: list[int], country: str) -> list[dict]:
         )
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise AppLookupError(f"Failed to look up App Store ids: {exc}") from exc
+        raise AppLookupError(f"Failed to look up App Store ids: {exc}", error_type="network") from exc
 
     return response.json().get("results", [])

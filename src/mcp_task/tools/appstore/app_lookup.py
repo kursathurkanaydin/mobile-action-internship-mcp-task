@@ -1,9 +1,10 @@
-from mcp_task.errors import ToolError, to_error_response
+from mcp_task.errors import handle_tool_errors
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_name, fetch_app_by_track_id, fetch_apps_by_track_ids
 
 
 @mcp.tool
+@handle_tool_errors
 def get_app_store_id(app_name: str, country: str = "us") -> dict:
     """Look up an app's numeric App Store id (trackId) by its name.
 
@@ -15,11 +16,7 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
         app_name: The app's name as it appears on the App Store.
         country: Two-letter App Store storefront code to search in, e.g. "us", "tr".
     """
-    try:
-        app = fetch_app_by_name(app_name, country)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    app = fetch_app_by_name(app_name, country)
     return {
         "app_id": app["trackId"],
         "name": app["trackName"],
@@ -28,6 +25,7 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
 
 
 @mcp.tool
+@handle_tool_errors
 def get_app_name(track_id: int, country: str = "us") -> dict:
     """Look up an app's name and details by its numeric App Store id (trackId).
 
@@ -43,11 +41,7 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
         track_id: The app's numeric App Store id, e.g. 570060128.
         country: Two-letter App Store storefront to look the app up in, e.g. "us", "tr".
     """
-    try:
-        app = fetch_app_by_track_id(track_id, country)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    app = fetch_app_by_track_id(track_id, country)
     return {
         "app_id": app["trackId"],
         "name": app["trackName"],
@@ -56,6 +50,7 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
 
 
 @mcp.tool
+@handle_tool_errors
 def get_app_names_batch(track_ids: str, country: str = "us") -> dict:
     """Look up names/details for MULTIPLE numeric App Store ids (trackIds) in one request.
 
@@ -75,11 +70,7 @@ def get_app_names_batch(track_ids: str, country: str = "us") -> dict:
             (default 300, configurable via env var) per call.
         country: Two-letter App Store storefront to look the apps up in, e.g. "us", "tr".
     """
-    try:
-        requested_ids, apps = fetch_apps_by_track_ids(track_ids, country)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    requested_ids, apps = fetch_apps_by_track_ids(track_ids, country)
     found_ids = {app["trackId"] for app in apps}
 
     return {

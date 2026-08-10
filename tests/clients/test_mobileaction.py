@@ -69,6 +69,23 @@ class TestGetHttpErrors:
         assert expected_snippet in exc_info.value.message
         assert exc_info.value.status_code == status_code
 
+    def test_404_status_derives_not_found_error_type(self, monkeypatch, fake_response):
+        monkeypatch.setattr(mobileaction.httpx, "get", lambda *a, **k: fake_response(404, json_data={}))
+
+        with pytest.raises(mobileaction.MobileActionAPIError) as exc_info:
+            mobileaction.get("/path")
+
+        assert exc_info.value.error_type == "not_found"
+
+    @pytest.mark.parametrize("status_code", [401, 403, 429, 500])
+    def test_non_404_status_derives_upstream_api_error_type(self, monkeypatch, fake_response, status_code):
+        monkeypatch.setattr(mobileaction.httpx, "get", lambda *a, **k: fake_response(status_code, json_data={}))
+
+        with pytest.raises(mobileaction.MobileActionAPIError) as exc_info:
+            mobileaction.get("/path")
+
+        assert exc_info.value.error_type == "upstream_api"
+
     def test_falls_back_to_raw_text_when_body_is_not_json(self, monkeypatch, fake_response):
         response = fake_response(500, json_data=None, text="<html>server error</html>")
         monkeypatch.setattr(mobileaction.httpx, "get", lambda *a, **k: response)
@@ -91,3 +108,4 @@ class TestGetNetworkErrors:
 
         assert "Network error" in exc_info.value.message
         assert exc_info.value.status_code is None
+        assert exc_info.value.error_type == "network"

@@ -40,6 +40,19 @@ class TestGetPlaystoreAppId:
         result = playstore_app_lookup.get_playstore_app_id("")
         assert "error" in result
 
+    def test_unexpected_exception_is_also_converted_to_an_error_dict(self, monkeypatch):
+        # e.g. a malformed record missing "appId"/"title" would previously
+        # raise a raw KeyError past this tool's try/except; @handle_tool_errors
+        # (applied via mcp.tool now) is the safety net for exactly that
+        def raise_key_error(query, country, lang_code):
+            raise KeyError("appId")
+
+        monkeypatch.setattr(playstore_app_lookup, "fetch_apps_by_name", raise_key_error)
+
+        result = playstore_app_lookup.get_playstore_app_id("WhatsApp")
+        assert "error" in result
+        assert result["status_code"] is None
+
 
 class TestGetPlaystoreAppName:
     def test_success_shapes_app_id_name_and_url(self, monkeypatch):

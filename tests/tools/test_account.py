@@ -16,4 +16,4 @@ class TestGetRemainingApiCredits:
         monkeypatch.setattr(account, "get", raise_error)
 
         result = account.get_remaining_api_credits()
-        assert result == {"error": "rate limited", "status_code": 429}
+        assert result == {"error": "rate limited", "status_code": 429, "error_type": "upstream_api"}

@@ -1,4 +1,4 @@
-from mcp_task.errors import ToolError, to_error_response
+from mcp_task.errors import handle_tool_errors
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.playstore.keyword_service import (
     fetch_apps_for_keyword,
@@ -20,6 +20,7 @@ _ORGANIC_KEYWORDS_MAX_LIMIT = 1000
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_keyword_ranking(
     track_id: str,
     country_code: str,
@@ -40,15 +41,12 @@ def get_playstore_keyword_ranking(
         date: Optional date in YYYY-MM-DD format. Defaults to the most recent
             available ranking day if omitted.
     """
-    try:
-        data = fetch_keyword_ranking(track_id, country_code, keywords, date)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_ranking(track_id, country_code, keywords, date)
     return {"rankings": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_top_keywords(
     track_id: str,
     country_code: str,
@@ -66,15 +64,12 @@ def get_playstore_top_keywords(
         date: Date to fetch top keywords for, in YYYY-MM-DD format (required).
         limit: Optional max number of keywords to return.
     """
-    try:
-        data = fetch_top_keywords(track_id, country_code, date, limit)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_top_keywords(track_id, country_code, date, limit)
     return {"top_keywords": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_keyword_ranking_history(
     track_id: str,
     country_code: str,
@@ -95,15 +90,12 @@ def get_playstore_keyword_ranking_history(
         start_date: History start date, inclusive, in YYYY-MM-DD format.
         end_date: History end date, inclusive, in YYYY-MM-DD format.
     """
-    try:
-        data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
     return {"history": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Get metadata about a keyword on Google Play: search volume, popularity,
     and how many apps target it.
@@ -115,15 +107,12 @@ def get_playstore_keyword_metadata(country_code: str, keyword: str) -> dict:
         country_code: Two-letter Play Store country code, e.g. "US", "TR".
         keyword: A single keyword to get metadata for.
     """
-    try:
-        data = fetch_keyword_metadata(country_code, keyword)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_keyword_metadata(country_code, keyword)
     return {"metadata": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """Get the list of apps that rank on Google Play for a given keyword.
 
@@ -136,15 +125,12 @@ def get_playstore_apps_for_keyword(country_code: str, keyword: str) -> dict:
         country_code: Two-letter Play Store country code, e.g. "US", "TR".
         keyword: A single keyword to find ranking apps for.
     """
-    try:
-        data = fetch_apps_for_keyword(country_code, keyword)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_apps_for_keyword(country_code, keyword)
     return {"apps": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_organic_keywords(
     track_id: str,
     country_code: str,
@@ -169,10 +155,7 @@ def get_playstore_organic_keywords(
         limit: Max number of keywords to return, sorted by best rank first.
             Defaults to and is capped at 1000 to avoid oversized responses.
     """
-    try:
-        data = fetch_organic_keywords(track_id, country_code, date, limit)
-    except ToolError as exc:
-        return to_error_response(exc)
+    data = fetch_organic_keywords(track_id, country_code, date, limit)
 
     rankings = data.get("rankings", [])
     capped_limit = max(1, min(limit, _ORGANIC_KEYWORDS_MAX_LIMIT))
@@ -189,6 +172,7 @@ def get_playstore_organic_keywords(
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_organic_impression_share(keyword: str, country_code: str) -> dict:
     """Get a keyword's organic impression share distribution across competing apps on Google Play.
 
@@ -199,15 +183,12 @@ def get_playstore_organic_impression_share(keyword: str, country_code: str) -> d
         keyword: A single keyword to get impression share for.
         country_code: Two-letter Play Store country code, e.g. "US", "TR".
     """
-    try:
-        data = fetch_organic_impression_share(keyword, country_code)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_organic_impression_share(keyword, country_code)
     return {"impression_share": data}
 
 
 @mcp.tool
+@handle_tool_errors
 def get_playstore_share_of_category(keyword: str, country_code: str) -> dict:
     """Get the category distribution a keyword appears in on Google Play.
 
@@ -218,9 +199,5 @@ def get_playstore_share_of_category(keyword: str, country_code: str) -> dict:
         keyword: A single keyword to get category distribution for.
         country_code: Two-letter Play Store country code, e.g. "US", "TR".
     """
-    try:
-        data = fetch_share_of_category(keyword, country_code)
-    except ToolError as exc:
-        return to_error_response(exc)
-
+    data = fetch_share_of_category(keyword, country_code)
     return {"share_of_category": data}

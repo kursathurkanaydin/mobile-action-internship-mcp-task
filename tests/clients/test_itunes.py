@@ -19,14 +19,16 @@ class TestSearchApp:
             itunes.httpx, "get", lambda *a, **k: fake_response(200, json_data={"results": []})
         )
 
-        with pytest.raises(itunes.AppLookupError, match="No app found"):
+        with pytest.raises(itunes.AppLookupError, match="No app found") as exc_info:
             itunes.search_app("Definitely Not A Real App", "us")
+        assert exc_info.value.error_type == "not_found"
 
     def test_http_error_status_raises_app_lookup_error(self, monkeypatch, fake_response):
         monkeypatch.setattr(itunes.httpx, "get", lambda *a, **k: fake_response(500))
 
-        with pytest.raises(itunes.AppLookupError, match="Failed to search"):
+        with pytest.raises(itunes.AppLookupError, match="Failed to search") as exc_info:
             itunes.search_app("Clash of Clans", "us")
+        assert exc_info.value.error_type == "network"
 
     def test_network_error_raises_app_lookup_error(self, monkeypatch):
         def raise_network_error(*args, **kwargs):
@@ -34,8 +36,9 @@ class TestSearchApp:
 
         monkeypatch.setattr(itunes.httpx, "get", raise_network_error)
 
-        with pytest.raises(itunes.AppLookupError, match="Failed to search"):
+        with pytest.raises(itunes.AppLookupError, match="Failed to search") as exc_info:
             itunes.search_app("Clash of Clans", "us")
+        assert exc_info.value.error_type == "network"
 
 
 class TestLookupApp:
