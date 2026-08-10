@@ -5,6 +5,7 @@ from mcp_task.services.playstore.keyword_service import (
     fetch_keyword_metadata,
     fetch_keyword_ranking,
     fetch_keyword_ranking_history,
+    fetch_keyword_ranking_history_multi,
     fetch_organic_impression_share,
     fetch_organic_keywords,
     fetch_share_of_category,
@@ -92,6 +93,43 @@ def get_playstore_keyword_ranking_history(
     """
     data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
     return {"history": data}
+
+
+@mcp.tool
+@handle_tool_errors
+def get_playstore_keyword_ranking_history_multi(
+    track_id: str,
+    country_code: str,
+    keywords: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Get one app's RAW Google Play ranking history for MULTIPLE keywords over a date range.
+
+    Same as get_playstore_keyword_ranking_history, but for two or more
+    keywords at once — e.g. "how has app X ranked for 'game', 'strategy',
+    'clan', and 'war' over the last 30 days on Google Play" (as opposed to
+    one keyword, which is get_playstore_keyword_ranking_history's job).
+    Returns one rank entry per day, per keyword, as plain data — no chart.
+
+    Call this ONCE with all the keywords comma-separated — do not call
+    get_playstore_keyword_ranking_history once per keyword and combine the
+    results yourself; each keyword still costs a separate MobileAction
+    request (the history endpoint has no batch-keyword mode), but this tool
+    does that fetching itself in one call, which
+    plot_playstore_keyword_ranking_history_multi also relies on to draw the
+    chart. The date range should not exceed 30 days per request; up to 10
+    keywords are supported.
+
+    Args:
+        track_id: The app's Google Play package name (e.g. "com.supercell.clashofclans").
+        country_code: Two-letter Play Store country code, e.g. "US", "TR".
+        keywords: Two or more keywords, comma-separated (e.g. "game,strategy,clan,war").
+        start_date: History start date, inclusive, in YYYY-MM-DD format.
+        end_date: History end date, inclusive, in YYYY-MM-DD format.
+    """
+    data = fetch_keyword_ranking_history_multi(track_id, country_code, keywords, start_date, end_date)
+    return {"history_by_keyword": data}
 
 
 @mcp.tool

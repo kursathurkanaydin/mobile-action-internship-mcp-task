@@ -61,3 +61,19 @@ def require_positive_int(value: int | None, field_name: str) -> int | None:
     if value <= 0:
         raise InputValidationError(f"'{field_name}' must be a positive number, got {value}.")
     return value
+
+
+def require_keyword_list(keywords: str, min_count: int = 1, max_count: int = 10) -> list[str]:
+    """Parse+validate a comma-separated list of keywords, e.g. for a multi-keyword history chart."""
+    raw_keywords = [part.strip() for part in (keywords or "").split(",") if part.strip()]
+    if not raw_keywords:
+        raise InputValidationError("'keywords' cannot be empty — provide one or more comma-separated keywords.")
+
+    unique_keywords = list(dict.fromkeys(raw_keywords))  # de-dupe, keep first-seen order
+    if len(unique_keywords) < min_count:
+        raise InputValidationError(f"Need at least {min_count} distinct keywords, got {len(unique_keywords)}.")
+    if len(unique_keywords) > max_count:
+        raise InputValidationError(
+            f"Too many keywords given at once: {len(unique_keywords)}, but at most {max_count} are supported."
+        )
+    return unique_keywords

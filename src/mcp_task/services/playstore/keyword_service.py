@@ -4,6 +4,7 @@ from mcp_task.validation.common import (
     require_country_code,
     require_date,
     require_date_range,
+    require_keyword_list,
     require_positive_int,
     require_text,
 )
@@ -77,6 +78,34 @@ def fetch_keyword_ranking_history(
             params={"startDate": start_date, "endDate": end_date},
         ),
     )
+
+
+def fetch_keyword_ranking_history_multi(
+    track_id: str,
+    country_code: str,
+    keywords: str,
+    start_date: str,
+    end_date: str,
+) -> dict[str, list]:
+    """Validate inputs and fetch Google Play ranking history for MULTIPLE keywords, one app.
+
+    Returns {keyword: [day entries...]}. One MobileAction request per
+    keyword — unlike the single-day ranking endpoint (fetch_keyword_ranking),
+    the history endpoint only accepts one keyword per call, so this can't be
+    a single batched request. Reuses fetch_keyword_ranking_history per
+    keyword rather than duplicating its validation/caching, at the cost of
+    re-validating track_id/country_code/date_range once per keyword (cheap —
+    no extra API calls, since those are pure string checks).
+    """
+    track_id = require_package_name(track_id)
+    country_code = require_country_code(country_code)
+    require_date_range(start_date, end_date, max_days=30)
+    keyword_list = require_keyword_list(keywords)
+
+    return {
+        keyword: fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
+        for keyword in keyword_list
+    }
 
 
 def fetch_keyword_metadata(country_code: str, keyword: str) -> dict:

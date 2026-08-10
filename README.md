@@ -52,6 +52,7 @@ the same way.
 | `get_playstore_keyword_metadata` | Search volume/popularity for a keyword. | 5, 0 on a cache hit |
 | `get_playstore_share_of_category` | Which app categories a keyword's search results fall into. | 5, 0 on a cache hit |
 | `get_playstore_keyword_ranking_history` | Rank history for one keyword for an app over a date range. | 10, 0 on a cache hit |
+| `get_playstore_keyword_ranking_history_multi` | Rank history for TWO OR MORE keywords for one app over a date range, in one call. | 10 × number of keywords (one history call per keyword) |
 | `get_playstore_organic_impression_share` | Impression share for a keyword split across the apps competing for it. | 20, 0 on a cache hit |
 | `get_playstore_top_keywords` | Keywords bringing an app the most search volume. | 20, 0 on a cache hit |
 | `get_playstore_organic_keywords` | Full list of keywords an app organically ranks for. | **50**, 0 on a cache hit |
@@ -95,6 +96,7 @@ for rendering.
 | `plot_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_keyword_ranking`) |
 | `plot_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_keyword_ranking_history`) |
 | `compare_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time. | 10 × number of apps (one history call per app) |
+| `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
 
 ### Example requests
 
@@ -151,6 +153,13 @@ using a package name instead of a numeric trackId (`com.duolingo` below):
 get_playstore_keyword_ranking
   GET https://api.mobileaction.co/playstore-keyword-ranking/com.duolingo/US/keywordrankings
       ?keywords=language+learning&token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_keyword_ranking_history_multi      (and plot_playstore_keyword_ranking_history_multi — same call, once per keyword)
+  GET https://api.mobileaction.co/playstore-keyword-ranking/com.supercell.clashofclans/TR/oyun/keywordrankings
+      ?startDate=2026-07-12&endDate=2026-08-10&token=YOUR_MOBILEACTION_API_KEY
+  GET https://api.mobileaction.co/playstore-keyword-ranking/com.supercell.clashofclans/TR/strateji/keywordrankings
+      ?startDate=2026-07-12&endDate=2026-08-10&token=YOUR_MOBILEACTION_API_KEY
+  ... (one request per keyword; "klan", "savas" follow the same pattern)
 
 get_playstore_organic_impression_share
   GET https://api.mobileaction.co/playstore-keyword-ranking/organic-impression-share/keyword/meditation/US
@@ -269,6 +278,7 @@ versions in the matching `src/mcp_task/example_prompts_*.txt` file):
 - Keyword ranking: *"What rank does com.duolingo have for the keyword 'language learning' on the US Play Store?"*
 - Top keywords: *"Show me the keywords that bring com.duolingo the most search volume on the US Play Store for 2026-07-01."*
 - Ranking history: *"How has com.duolingo's ranking for the keyword 'language learning' changed over the last 30 days on the US Play Store?"*
+- Multi-keyword ranking history chart: *"Can you chart Clash of Clans' ranking for 'game', 'strategy', 'clan', and 'war' over the last 30 days on Google Play?"*
 - Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US Play Store?"*
 - Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US Play Store?"*
 - Organic keywords (costs 50 credits, test carefully): *"Show me the keywords com.duolingo organically ranks for on the US Play Store, for the date 2026-07-01."*
@@ -294,23 +304,25 @@ src/mcp_task/
     playstore/   keyword_service.py, app_service.py
     cache.py     shared Redis-caching helper (both stores' MobileAction fetches)
   validation/  input validation, split the same way as services/
-    common.py    shared validators (country_code, text, date, date_range, positive_int)
+    common.py    shared validators (country_code, text, date, date_range, positive_int, keyword_list)
     appstore.py  App Store-only (numeric track_id, device, track_id_list)
     playstore.py Play Store-only (package_name, package_name_list)
   charting/    HTML/Chart.js dashboard rendering — generic, reused by any store's chart tools
   tools/       the @mcp.tool definitions themselves
     appstore/    keyword_services.py, app_lookup.py, charts.py
-    playstore/   keyword_services.py, app_lookup.py
+    playstore/   keyword_services.py, app_lookup.py, charts.py
     account.py   (not store-specific, stays top-level)
 ```
 
 Each store is its own subpackage rather than one growing module or a pile of
 prefixed files — `services/appstore/` and `services/playstore/` mirror each
-other module-for-module, same for `tools/` and `validation/`. `charts.py`
-lives under `tools/appstore/` because its three tools are entirely App
-Store-backed today; a future Play Store chart tool would be
-`tools/playstore/charts.py`, reusing the same store-agnostic `charting/`
-rendering package. New tool files (or a whole new store subpackage) are
+other module-for-module, same for `tools/` and `validation/`. Both stores now
+have a `charts.py`, sharing the same `charting/` rendering package via
+`render_dashboard_html`'s `platform` argument (`charting.dashboard.APP_STORE`
+vs `PLAY_STORE` — a `StorePlatform` bundling the device axis to split by and
+the display label, since Play Store history entries have no device field at
+all and get a single merged view with the toggle hidden instead of a real
+iPhone/iPad split). New tool files (or a whole new store subpackage) are
 picked up automatically: `mcp_instance.py` recursively walks `tools/` at
 startup (`pkgutil.walk_packages`, not the non-recursive `iter_modules` —
 subpackages need the recursive version) instead of hand-listing imports, so
@@ -363,11 +375,3 @@ site when one subclass covers more than one situation — e.g.
 
 Not store-specific (like `tools/account.py` or `services/cache.py`)? Put it
 at the top level of `services/`/`tools/` instead of under a store folder.
-
-Adding a whole new store? Create `services/<newstore>/` and
-`tools/<newstore>/`, each with an (empty) `__init__.py` — auto-discovery
-picks it up with nothing else to configure. If you mirror it under `tests/`
-too, the `__init__.py` already present at `tests/services/` and
-`tests/tools/` is what stops pytest from colliding two identically-named
-leaf packages (e.g. two different `appstore/` directories) during test
-collection — don't remove those.

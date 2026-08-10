@@ -5,6 +5,7 @@ from mcp_task.validation.common import (
     require_country_code,
     require_date,
     require_date_range,
+    require_keyword_list,
     require_positive_int,
     require_text,
 )
@@ -77,3 +78,25 @@ class TestRequirePositiveInt:
     def test_rejects_non_positive(self, bad_value):
         with pytest.raises(InputValidationError):
             require_positive_int(bad_value, "limit")
+
+
+class TestRequireKeywordList:
+    def test_single_keyword_is_allowed(self):
+        assert require_keyword_list("strategy") == ["strategy"]
+
+    def test_parses_dedupes_and_strips_whitespace(self):
+        result = require_keyword_list(" game , strategy , game ")
+        assert result == ["game", "strategy"]
+
+    def test_empty_raises(self):
+        with pytest.raises(InputValidationError, match="cannot be empty"):
+            require_keyword_list("")
+
+    def test_too_many_keywords_raises(self):
+        keywords = ",".join(f"kw{i}" for i in range(5))
+        with pytest.raises(InputValidationError, match="at most 3"):
+            require_keyword_list(keywords, max_count=3)
+
+    def test_too_few_keywords_raises(self):
+        with pytest.raises(InputValidationError, match="at least 2"):
+            require_keyword_list("game", min_count=2)

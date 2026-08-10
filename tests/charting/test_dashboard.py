@@ -2,11 +2,16 @@ import json
 import re
 
 from mcp_task.charting import dashboard
-from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ranking_dashboard
+from mcp_task.charting.dashboard import PLAY_STORE, render_dashboard_html, render_keyword_ranking_dashboard
 
 
 def _entry(date: str, rank, device: str = "IPHONE"):
     return {"trackId": 1, "keyword": "strategy", "rank": rank, "countryCode": "US", "date": date, "appKind": device}
+
+
+def _playstore_entry(date: str, rank):
+    # Google Play history entries have no "appKind"/device field at all
+    return {"trackId": "com.supercell.clashofclans", "keyword": "oyun", "rank": rank, "countryCode": "TR", "date": date}
 
 
 def _ranking(keyword: str, rank, device: str = "IPHONE"):
@@ -181,6 +186,104 @@ class TestRenderDashboardHtml:
                 {"label": "No Data App", "borderColor": "#0A84FF", "backgroundColor": "#0A84FF",
                  "spanGaps": False, "data": []}
             ]
+
+
+class TestRenderDashboardHtmlPlayStore:
+    def test_default_platform_is_app_store_with_device_split(self):
+        text = render_dashboard_html(
+            {"App A": [_entry("2026-07-01T00:00:00", 1)]}, "kw", "US", "2026-07-01", "2026-07-01"
+        ).decode()
+        assert "US App Store" in text
+        assert '<div class="device-toggle">' in text
+
+    def test_play_store_platform_shows_play_store_label(self):
+        histories = {"oyun": [_playstore_entry("2026-07-01T00:00:00", 12)]}
+        text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-10", platform=PLAY_STORE
+        ).decode()
+        assert "TR Play Store" in text
+        assert "US App Store" not in text
+
+    def test_play_store_platform_hides_the_device_toggle(self):
+        histories = {"oyun": [_playstore_entry("2026-07-01T00:00:00", 12)]}
+        text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-10", platform=PLAY_STORE
+        ).decode()
+        assert '<div class="device-toggle">' not in text
+
+    def test_play_store_platform_merges_entries_with_no_appkind_field(self):
+        # the whole point: Play Store history entries have no device field
+        # at all, so filtering by "IPHONE"/"IPAD" would silently drop
+        # everything — must use the merge path (device=None) instead
+        histories = {
+            "oyun": [_playstore_entry("2026-07-01T00:00:00", 20), _playstore_entry("2026-07-02T00:00:00", 10)]
+        }
+        text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-02", platform=PLAY_STORE
+        ).decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        assert set(chart_data) == {"ANDROID"}
+        assert chart_data["ANDROID"]["labels"] == ["Jul 01", "Jul 02"]
+        assert chart_data["ANDROID"]["datasets"][0]["data"] == [20, 10]
+        assert "#10" in text  # best rank shows up in the stat card
+
+    def test_series_label_defaults_to_app_and_can_be_overridden(self):
+        histories = {"oyun": [_playstore_entry("2026-07-01T00:00:00", 12)]}
+
+        default_text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-01", platform=PLAY_STORE
+        ).decode()
+        assert "<th>App</th>" in default_text
+
+        keyword_text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-01", platform=PLAY_STORE, series_label="Keyword"
+        ).decode()
+        assert "<th>Keyword</th>" in keyword_text
+        assert "<th>App</th>" not in keyword_text
+
+    def test_multiple_keyword_series_all_appear_in_the_chart(self):
+        histories = {
+            "oyun": [_playstore_entry("2026-07-01T00:00:00", 12)],
+            "strateji": [_playstore_entry("2026-07-01T00:00:00", 3)],
+        }
+        text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-01", platform=PLAY_STORE, series_label="Keyword"
+        ).decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        labels = {dataset["label"] for dataset in chart_data["ANDROID"]["datasets"]}
+        assert labels == {"oyun", "strateji"}
+
+    def test_series_with_different_crawl_times_share_the_same_xaxis_slots(self):
+        # regression guard: each keyword series is crawled at its own time
+        # of day, so entries for "the same day" don't share a timestamp
+        # across series. If those were merged by full datetime instead of
+        # calendar date, each series' points would land in different x-axis
+        # slots and spanGaps=False would draw dots with no connecting line
+        # (see charting/renderer.py's best_rank_series docstring).
+        histories = {
+            "oyun": [
+                {"date": "2026-07-01T01:16:20", "rank": 13},
+                {"date": "2026-07-02T01:16:20", "rank": 13},
+            ],
+            "strateji": [
+                {"date": "2026-07-01T07:12:08", "rank": 3},
+                {"date": "2026-07-02T07:12:08", "rank": 4},
+            ],
+        }
+        text = render_dashboard_html(
+            histories, "Clash of Clans", "TR", "2026-07-01", "2026-07-02", platform=PLAY_STORE, series_label="Keyword"
+        ).decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        view = chart_data["ANDROID"]
+        assert view["labels"] == ["Jul 01", "Jul 02"]  # not 4 slots for 2 days
+
+        oyun = next(d for d in view["datasets"] if d["label"] == "oyun")
+        strateji = next(d for d in view["datasets"] if d["label"] == "strateji")
+        assert oyun["data"] == [13, 13]
+        assert strateji["data"] == [3, 4]
 
 
 class TestRenderDashboardHtmlEscaping:

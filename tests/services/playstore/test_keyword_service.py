@@ -200,6 +200,62 @@ class TestFetchKeywordRankingHistory:
         assert result == cached_data
 
 
+class TestFetchKeywordRankingHistoryMulti:
+    def test_invalid_date_range_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(ks, "get", _no_call)
+        monkeypatch.setattr(cache, "redis_client", _UntouchableRedis())
+        with pytest.raises(ToolError, match="before"):
+            ks.fetch_keyword_ranking_history_multi(
+                "com.facebook.katana", "US", "game,strategy", "2026-07-20", "2026-07-01"
+            )
+
+    def test_empty_keywords_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(ks, "get", _no_call)
+        monkeypatch.setattr(cache, "redis_client", _UntouchableRedis())
+        with pytest.raises(ToolError, match="cannot be empty"):
+            ks.fetch_keyword_ranking_history_multi("com.facebook.katana", "US", "", "2026-07-01", "2026-07-01")
+
+    def test_fetches_one_call_per_keyword_and_keys_result_by_keyword(self, monkeypatch):
+        captured_paths = []
+
+        def fake_get(path, params):
+            captured_paths.append(path)
+            return [{"date": "2026-07-01T00:00:00", "rank": 5 if "game" in path else 10}]
+
+        fake_redis = _FakeRedis()
+        monkeypatch.setattr(ks, "get", fake_get)
+        monkeypatch.setattr(cache, "redis_client", fake_redis)
+
+        result = ks.fetch_keyword_ranking_history_multi(
+            "com.facebook.katana", "US", "game,strategy", "2026-07-01", "2026-07-01"
+        )
+
+        assert set(result) == {"game", "strategy"}
+        assert result["game"] == [{"date": "2026-07-01T00:00:00", "rank": 5}]
+        assert result["strategy"] == [{"date": "2026-07-01T00:00:00", "rank": 10}]
+        assert captured_paths == [
+            "/playstore-keyword-ranking/com.facebook.katana/US/game/keywordrankings",
+            "/playstore-keyword-ranking/com.facebook.katana/US/strategy/keywordrankings",
+        ]
+
+    def test_duplicate_keywords_are_deduped_to_a_single_call(self, monkeypatch):
+        captured_paths = []
+
+        def fake_get(path, params):
+            captured_paths.append(path)
+            return []
+
+        monkeypatch.setattr(ks, "get", fake_get)
+        monkeypatch.setattr(cache, "redis_client", _FakeRedis())
+
+        result = ks.fetch_keyword_ranking_history_multi(
+            "com.facebook.katana", "US", "game,game,game", "2026-07-01", "2026-07-01"
+        )
+
+        assert list(result) == ["game"]
+        assert len(captured_paths) == 1
+
+
 class TestFetchKeywordMetadata:
     def test_empty_keyword_raises_before_any_request(self, monkeypatch):
         monkeypatch.setattr(ks, "get", _no_call)

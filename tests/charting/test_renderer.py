@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from mcp_task.charting.renderer import best_rank_series
 
@@ -13,7 +13,7 @@ class TestBestRankSeries:
             _entry("2026-07-01T00:00:00", 20, "IPHONE"),
             _entry("2026-07-01T00:00:00", 15, "IPAD"),
         ]
-        assert best_rank_series(history) == [(datetime.fromisoformat("2026-07-01T00:00:00"), 15)]
+        assert best_rank_series(history) == [(date(2026, 7, 1), 15)]
 
     def test_ignores_entries_with_missing_rank(self):
         history = [_entry("2026-07-01T00:00:00", None), _entry("2026-07-02T00:00:00", 10)]
@@ -38,17 +38,31 @@ class TestBestRankSeries:
             _entry("2026-07-01T00:00:00", 20, "IPHONE"),
             _entry("2026-07-01T00:00:00", 15, "IPAD"),
         ]
-        assert best_rank_series(history, device="IPHONE") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 20)]
-        assert best_rank_series(history, device="IPAD") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 15)]
+        assert best_rank_series(history, device="IPHONE") == [(date(2026, 7, 1), 20)]
+        assert best_rank_series(history, device="IPAD") == [(date(2026, 7, 1), 15)]
 
     def test_device_filter_excludes_days_only_present_on_other_device(self):
         history = [
             _entry("2026-07-01T00:00:00", 20, "IPHONE"),
             _entry("2026-07-02T00:00:00", 10, "IPAD"),
         ]
-        assert best_rank_series(history, device="IPHONE") == [(datetime.fromisoformat("2026-07-01T00:00:00"), 20)]
-        assert best_rank_series(history, device="IPAD") == [(datetime.fromisoformat("2026-07-02T00:00:00"), 10)]
+        assert best_rank_series(history, device="IPHONE") == [(date(2026, 7, 1), 20)]
+        assert best_rank_series(history, device="IPAD") == [(date(2026, 7, 2), 10)]
 
     def test_device_filter_with_no_matching_entries_returns_empty_list(self):
         history = [_entry("2026-07-01T00:00:00", 20, "IPHONE")]
         assert best_rank_series(history, device="IPAD") == []
+
+    def test_different_crawl_times_on_the_same_calendar_day_are_merged_not_split(self):
+        # regression guard: MobileAction's exact crawl timestamp for "the
+        # same day" varies (e.g. between different keywords' series in a
+        # multi-keyword chart) — merging by full datetime instead of just
+        # the date would scatter one logical day across several x-axis
+        # slots and break the chart's connecting lines (see renderer.py's
+        # docstring). Two entries for the same calendar day, different
+        # times, must collapse to ONE point, keeping the better rank.
+        history = [
+            _entry("2026-07-01T01:16:20", 20),
+            _entry("2026-07-01T07:12:08", 15),
+        ]
+        assert best_rank_series(history) == [(date(2026, 7, 1), 15)]

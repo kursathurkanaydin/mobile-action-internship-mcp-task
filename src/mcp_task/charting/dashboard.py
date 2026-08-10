@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 from html import escape
 from pathlib import Path
@@ -8,8 +9,26 @@ from mcp_task.charting.renderer import best_rank_series
 
 _ACCENT_COLORS = ["#0A84FF", "#FF9F0A", "#30D158", "#FF375F", "#BF5AF2", "#64D2FF"]
 _VENDOR_DIR = Path(__file__).parent / "vendor"
-_DEVICES = ["IPHONE", "IPAD"]
 _DEVICE_LABELS = {"IPHONE": "iPhone", "IPAD": "iPad"}
+
+
+@dataclass(frozen=True)
+class StorePlatform:
+    """The device axis + display name to split/label a dashboard by — the two
+    things that always travel together per store, so render_dashboard_html
+    takes one of these instead of two separately-passed values that could
+    drift out of sync. App Store data has a real iPhone/iPad split; Play
+    Store data has no device dimension at all (its history entries have no
+    "appKind" field), so it uses a single merged axis with the device
+    toggle hidden rather than a real per-device split.
+    """
+
+    devices: list[str]
+    label: str
+
+
+APP_STORE = StorePlatform(devices=["IPHONE", "IPAD"], label="App Store")
+PLAY_STORE = StorePlatform(devices=["ANDROID"], label="Play Store")
 
 
 @lru_cache(maxsize=1)
@@ -33,49 +52,65 @@ def render_dashboard_html(
     country_code: str,
     start_date: str,
     end_date: str,
+    platform: StorePlatform = APP_STORE,
+    series_label: str = "App",
 ) -> bytes:
     """Build a self-contained, interactive HTML dashboard of keyword ranking history.
 
-    Works for one app (a single-app ranking chart) or several (a comparison),
-    just by the size of histories_by_app — the heading adapts automatically.
-    Draws a live Chart.js line chart (rank per day, one series per app), with
-    an iPhone/iPad toggle button that swaps the chart, stat cards, and summary
-    table to that device's numbers — devices are kept separate rather than
-    merged, since an app's iPhone and iPad ranks can differ a lot. Hovering a
-    chart point shows its exact date/rank, legend entries can be clicked to
-    hide a series, and the Chart.js library itself is embedded inline (no
-    CDN) so the page works offline.
+    Works for one app (a single-app ranking chart) or several (a comparison)
+    — or, just as well, one series per keyword for a single app, since
+    histories_by_app's keys are just series labels; the heading adapts
+    automatically to the count. Draws a live Chart.js line chart (rank per
+    day, one series per label), with a device toggle button that swaps the
+    chart, stat cards, and summary table to that device's numbers — devices
+    are kept separate rather than merged, since an app's iPhone and iPad
+    ranks can differ a lot. Hovering a chart point shows its exact date/rank,
+    legend entries can be clicked to hide a series, and the Chart.js library
+    itself is embedded inline (no CDN) so the page works offline.
+
+    platform: which store's device axis/label to use — APP_STORE (default)
+        or PLAY_STORE (single merged view, toggle hidden; see StorePlatform).
+    series_label: the summary table's first column header — "App" (default)
+        when histories_by_app's keys are app names, "Keyword" when they're
+        keywords instead. Independent of platform: which axis is being
+        compared (apps vs. keywords) isn't tied to which store the data
+        came from.
     """
+    devices = platform.devices
+    show_toggle = len(devices) > 1
+
     cards_by_device, rows_by_device, chart_data_by_device = {}, {}, {}
-    for device in _DEVICES:
+    for device in devices:
+        filter_device = device if device in _DEVICE_LABELS else None
         cards, rows = [], []
         for index, (label, history) in enumerate(histories_by_app.items()):
             color = _ACCENT_COLORS[index % len(_ACCENT_COLORS)]
-            stats = _summarize(history, device)
+            stats = _summarize(history, filter_device)
             cards.append(_render_stat_card(label, color, stats))
             rows.append(_render_table_row(label, color, stats))
         cards_by_device[device] = "".join(cards)
         rows_by_device[device] = "".join(rows)
-        chart_data_by_device[device] = _build_chart_view(histories_by_app, device)
+        chart_data_by_device[device] = _build_chart_view(histories_by_app, filter_device)
 
-    default_device = _DEVICES[0]
+    default_device = devices[0]
     is_comparison = len(histories_by_app) > 1
 
     return _PAGE_TEMPLATE.format(
         keyword=escape(keyword),
         country_code=escape(country_code.upper()),
+        store_label=escape(platform.label),
         start_date=escape(start_date),
         end_date=escape(end_date),
         heading="Keyword Ranking Comparison" if is_comparison else "Keyword Ranking",
         title_suffix="ranking comparison" if is_comparison else "ranking",
-        device_toggle=_render_device_toggle(default_device),
+        device_toggle=_render_device_toggle(default_device, devices) if show_toggle else "",
         cards_sections=_render_device_sections("cards", cards_by_device, default_device),
         table_sections=_render_device_sections(
             "",
             rows_by_device,
             default_device,
             wrap_as_table=True,
-            table_headers=["App", "Best rank", "Worst rank", "Average rank", "Days tracked"],
+            table_headers=[series_label, "Best rank", "Worst rank", "Average rank", "Days tracked"],
         ),
         css=_CSS,
         chartjs_source=_chartjs_source(),
@@ -84,7 +119,7 @@ def render_dashboard_html(
     ).encode("utf-8")
 
 
-def _build_chart_view(histories_by_app: dict[str, list[dict]], device: str) -> dict:
+def _build_chart_view(histories_by_app: dict[str, list[dict]], device: str | None) -> dict:
     """Build the {labels, datasets} Chart.js payload for one device."""
     series_by_app = {label: best_rank_series(history, device=device) for label, history in histories_by_app.items()}
     all_dates = sorted({entry_date for points in series_by_app.values() for entry_date, _ in points})
@@ -108,7 +143,7 @@ def _build_chart_view(histories_by_app: dict[str, list[dict]], device: str) -> d
     return {"labels": [entry_date.strftime("%b %d") for entry_date in all_dates], "datasets": datasets}
 
 
-def _summarize(history: list[dict], device: str) -> dict:
+def _summarize(history: list[dict], device: str | None) -> dict:
     points = best_rank_series(history, device=device)
     if not points:
         return {"days": 0}
@@ -124,11 +159,12 @@ def _summarize(history: list[dict], device: str) -> dict:
     }
 
 
-def _render_device_toggle(default_device: str) -> str:
+def _render_device_toggle(default_device: str, devices: list[str] | None = None) -> str:
+    devices = devices if devices is not None else APP_STORE.devices
     buttons = "".join(
         f'<button type="button" class="device-btn{" active" if device == default_device else ""}" '
         f'data-device="{device}">{_DEVICE_LABELS[device]}</button>'
-        for device in _DEVICES
+        for device in devices
     )
     return f'<div class="device-toggle">{buttons}</div>'
 
@@ -213,7 +249,7 @@ def render_keyword_ranking_dashboard(
     keyword_colors = {keyword: _ACCENT_COLORS[index % len(_ACCENT_COLORS)] for index, keyword in enumerate(keywords)}
 
     cards_by_device, rows_by_device, chart_data_by_device = {}, {}, {}
-    for device in _DEVICES:
+    for device in APP_STORE.devices:
         rank_by_keyword = _keyword_rank_map(rankings, device)
         ranked_first = sorted(keywords, key=lambda kw: (rank_by_keyword.get(kw) is None, rank_by_keyword.get(kw, 0)))
 
@@ -233,7 +269,7 @@ def render_keyword_ranking_dashboard(
             "colors": [keyword_colors[kw] for kw in chart_keywords],
         }
 
-    default_device = _DEVICES[0]
+    default_device = APP_STORE.devices[0]
 
     return _KEYWORD_PAGE_TEMPLATE.format(
         app_name=escape(app_name),
@@ -398,7 +434,7 @@ _PAGE_TEMPLATE = """<!doctype html>
   <div class="page">
     <header>
       <h1>{heading}</h1>
-      <p class="subtitle">"{keyword}" &middot; {country_code} App Store &middot; {start_date} &rarr; {end_date}</p>
+      <p class="subtitle">"{keyword}" &middot; {country_code} {store_label} &middot; {start_date} &rarr; {end_date}</p>
     </header>
 
     {device_toggle}
