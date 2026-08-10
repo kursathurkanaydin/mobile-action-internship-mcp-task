@@ -1,5 +1,6 @@
 import pytest
 
+from mcp_task.config import BATCH_LOOKUP_MAX_IDS
 from mcp_task.errors import ToolError
 from mcp_task.services import app_service
 
@@ -87,10 +88,10 @@ class TestFetchAppsByTrackIds:
         assert captured == {"ids": [1, 2], "country": "us"}
         assert apps == fake_apps
 
-    def test_more_than_150_ids_raises_before_any_request(self, monkeypatch):
+    def test_more_than_batch_lookup_max_ids_raises_before_any_request(self, monkeypatch):
         monkeypatch.setattr(app_service, "lookup_apps", _no_call)
-        ids = ",".join(str(i) for i in range(1, 152))
-        with pytest.raises(ToolError, match="at most 150"):
+        ids = ",".join(str(i) for i in range(1, BATCH_LOOKUP_MAX_IDS + 2))
+        with pytest.raises(ToolError, match=f"at most {BATCH_LOOKUP_MAX_IDS}"):
             app_service.fetch_apps_by_track_ids(ids, "us")
 
     def test_invalid_country_raises_before_any_request(self, monkeypatch):

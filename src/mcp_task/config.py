@@ -19,3 +19,8 @@ if not MOBILEACTION_API_KEY:
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# iTunes' lookup endpoint comfortably supports a couple hundred comma-joined
+# ids per request; this stays well under that so a single batch call never
+# risks a rejected/oversized request.
+BATCH_LOOKUP_MAX_IDS = int(os.getenv("BATCH_LOOKUP_MAX_IDS", "300"))

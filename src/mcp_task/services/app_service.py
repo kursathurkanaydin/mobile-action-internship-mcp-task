@@ -1,10 +1,6 @@
 from mcp_task.clients.itunes import lookup_app, lookup_apps, search_app
+from mcp_task.config import BATCH_LOOKUP_MAX_IDS
 from mcp_task.validation import require_country_code, require_text, require_track_id, require_track_id_list
-
-# iTunes' lookup endpoint comfortably supports a couple hundred comma-joined
-# ids per request; this stays well under that so a single batch call never
-# risks a rejected/oversized request.
-_BATCH_LOOKUP_MAX_IDS = 300
 
 
 def fetch_app_by_name(app_name: str, country: str) -> dict:
@@ -28,6 +24,6 @@ def fetch_apps_by_track_ids(track_ids: str, country: str) -> tuple[list[int], li
     id list, so the caller can report which of them iTunes didn't find (it
     silently omits unknown ids rather than erroring).
     """
-    ids = require_track_id_list(track_ids, min_count=1, max_count=_BATCH_LOOKUP_MAX_IDS)
+    ids = require_track_id_list(track_ids, min_count=1, max_count=BATCH_LOOKUP_MAX_IDS)
     country = require_country_code(country, upper=False)
     return ids, lookup_apps(ids, country)

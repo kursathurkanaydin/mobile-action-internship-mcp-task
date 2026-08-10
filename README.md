@@ -44,7 +44,7 @@ MobileAction's endpoints need a numeric `trackId` rather than an app name)
 |---|---|---|
 | `get_app_store_id` | Resolve an app name to its numeric App Store id. | Free (external API) |
 | `get_app_name` | Resolve a numeric App Store id back to its name. | Free (external API) |
-| `get_app_names_batch` | Resolve 1–150 numeric App Store ids to names in one request (e.g. the competitor trackIds from `get_apps_for_keyword`) instead of one call per id. | Free (external API) |
+| `get_app_names_batch` | Resolve 1–300 numeric App Store ids to names in one request (limit configurable via `BATCH_LOOKUP_MAX_IDS`; e.g. the competitor trackIds from `get_apps_for_keyword`) instead of one call per id. | Free (external API) |
 
 **Interactive charts** (bonus — render the keyword data above as a
 self-contained HTML page with a live Chart.js chart, instead of raw JSON).
@@ -160,7 +160,7 @@ Add this to Claude Desktop's config
   "mcpServers": {
     "mobileaction": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/mcp-task", "run", "src/mcp-task/server.py"]
+      "args": ["--directory", "/absolute/path/to/mcp_task", "run", "src/mcp_task/server.py"]
     }
   }
 }

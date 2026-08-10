@@ -71,7 +71,8 @@ def get_app_names_batch(track_ids: str, country: str = "us") -> dict:
 
     Args:
         track_ids: One or more numeric App Store ids, comma-separated
-            (e.g. "570060128,389801252,284882215"). Up to 150 per call.
+            (e.g. "570060128,389801252,284882215"). Up to BATCH_LOOKUP_MAX_IDS
+            (default 300, configurable via env var) per call.
         country: Two-letter App Store storefront to look the apps up in, e.g. "us", "tr".
     """
     try:
