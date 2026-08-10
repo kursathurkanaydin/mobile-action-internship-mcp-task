@@ -2,7 +2,7 @@ import pytest
 from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.clients.itunes import AppLookupError
-from mcp_task.tools import charts
+from mcp_task.tools.appstore import charts
 
 _HISTORY = [
     {"date": "2026-07-01T00:00:00", "rank": 20, "appKind": "IPHONE"},

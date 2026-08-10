@@ -280,17 +280,20 @@ src/mcp_task/
     appstore/    keyword_service.py, app_service.py (iTunes-backed)
     playstore/   keyword_service.py, app_service.py
     cache.py     shared Redis-caching helper (both stores' MobileAction fetches)
-  charting/    HTML/Chart.js dashboard rendering
+  charting/    HTML/Chart.js dashboard rendering — generic, reused by any store's chart tools
   tools/       the @mcp.tool definitions themselves
-    appstore/    keyword_services.py, app_lookup.py
+    appstore/    keyword_services.py, app_lookup.py, charts.py
     playstore/   keyword_services.py, app_lookup.py
-    account.py, charts.py   (not store-specific, stay top-level)
+    account.py   (not store-specific, stays top-level)
 ```
 
 Each store is its own subpackage rather than one growing module or a pile of
 prefixed files — `services/appstore/` and `services/playstore/` mirror each
-other module-for-module, same for `tools/`. New tool files (or a whole new
-store subpackage) are picked up automatically: `mcp_instance.py` recursively
-walks `tools/` at startup (`pkgutil.walk_packages`, not the non-recursive
-`iter_modules` — subpackages need the recursive version) instead of
-hand-listing imports, so nothing needs to be wired in by hand.
+other module-for-module, same for `tools/`. `charts.py` lives under
+`tools/appstore/` because its three tools are entirely App Store-backed today;
+a future Play Store chart tool would be `tools/playstore/charts.py`, reusing
+the same store-agnostic `charting/` rendering package. New tool files (or a
+whole new store subpackage) are picked up automatically: `mcp_instance.py`
+recursively walks `tools/` at startup (`pkgutil.walk_packages`, not the
+non-recursive `iter_modules` — subpackages need the recursive version)
+instead of hand-listing imports, so nothing needs to be wired in by hand.
