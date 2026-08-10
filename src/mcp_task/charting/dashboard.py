@@ -29,6 +29,15 @@ class StorePlatform:
 
 APP_STORE = StorePlatform(devices=["IPHONE", "IPAD"], label="App Store")
 PLAY_STORE = StorePlatform(devices=["ANDROID"], label="Play Store")
+# For a chart comparing the two stores directly (one series per store): a
+# single merged axis, same mechanism PLAY_STORE uses. App Store history
+# entries still have an "appKind" field here, but device=None (the merge
+# path _build_chart_view/_summarize take for any device value that isn't
+# "IPHONE"/"IPAD") intentionally picks the best rank across devices anyway —
+# a 3rd axis (device) on top of the 2 already in play (store x time) would
+# be too busy to read, and the whole point of this chart is comparing
+# stores, not devices.
+COMPARE = StorePlatform(devices=["COMPARE"], label="App Store vs Play Store")
 
 
 @lru_cache(maxsize=1)
@@ -324,6 +333,54 @@ def _render_keyword_row(keyword: str, color: str, rank: int | None) -> str:
     dot = f'<span class="dot" style="background:{color}"></span>'
     rank_cell = f"#{rank}" if rank is not None else "Not ranked"
     return f"<tr><td>{dot}{safe_keyword}</td><td>{rank_cell}</td></tr>"
+
+
+def render_ranking_comparison_dashboard(
+    app_name: str,
+    app_store_ranks: dict[str, int | None],
+    play_store_ranks: dict[str, int | None],
+    keywords: list[str],
+    country_code: str,
+    date: str,
+) -> bytes:
+    """Build a self-contained HTML dashboard comparing one app's App Store vs
+    Google Play rank, per keyword, for a single day.
+
+    Unlike render_dashboard_html (a trend over time) this is a single-day
+    snapshot: a grouped bar chart, two bars per keyword (App Store, Play
+    Store), shortest bar = best rank. No device toggle — callers are
+    expected to pre-merge App Store's iPhone/iPad ranks into a single
+    best-rank-per-keyword dict first (see tools/compare/charts.py's
+    _rank_by_keyword), since a 3rd axis (device) on top of the 2 already
+    here (store x keyword) would be too busy to read. A keyword missing
+    from one store's dict is drawn as "Not ranked" rather than a zero bar.
+    """
+    datasets = [
+        {"label": "App Store", "backgroundColor": _ACCENT_COLORS[0], "borderRadius": 6,
+         "data": [app_store_ranks.get(keyword) for keyword in keywords]},
+        {"label": "Play Store", "backgroundColor": _ACCENT_COLORS[1], "borderRadius": 6,
+         "data": [play_store_ranks.get(keyword) for keyword in keywords]},
+    ]
+
+    def _rank_cell(rank: int | None) -> str:
+        return f"#{rank}" if rank is not None else "Not ranked"
+
+    rows = "".join(
+        f"<tr><td>{escape(keyword)}</td>"
+        f"<td>{_rank_cell(app_store_ranks.get(keyword))}</td>"
+        f"<td>{_rank_cell(play_store_ranks.get(keyword))}</td></tr>"
+        for keyword in keywords
+    )
+
+    return _COMPARE_RANKING_PAGE_TEMPLATE.format(
+        app_name=escape(app_name),
+        country_code=escape(country_code.upper()),
+        date=escape(date),
+        table_rows=rows,
+        chart_data=_safe_json({"labels": keywords, "datasets": datasets}),
+        css=_CSS,
+        chartjs_source=_chartjs_source(),
+    ).encode("utf-8")
 
 
 _CSS = """
@@ -624,6 +681,76 @@ _KEYWORD_PAGE_TEMPLATE = """<!doctype html>
 
     document.querySelectorAll('.device-btn').forEach((btn) => {{
       btn.addEventListener('click', () => selectDevice(btn.dataset.device));
+    }});
+  </script>
+</body>
+</html>
+"""
+
+_COMPARE_RANKING_PAGE_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{app_name} — App Store vs Play Store ranking</title>
+<style>{css}</style>
+<script>{chartjs_source}</script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>{app_name}: App Store vs Play Store Ranking</h1>
+      <p class="subtitle">{country_code} &middot; {date}</p>
+    </header>
+
+    <section class="chart-container">
+      <canvas id="rankChart"></canvas>
+    </section>
+
+    <table>
+      <thead><tr><th>Keyword</th><th>App Store rank</th><th>Play Store rank</th></tr></thead>
+      <tbody>{table_rows}</tbody>
+    </table>
+  </div>
+
+  <script>
+    const chartData = {chart_data};
+
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridColor = isDarkMode ? '#3a3a3c' : '#e5e5ea';
+    const textColor = isDarkMode ? '#98989d' : '#6e6e73';
+    const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    new Chart(document.getElementById('rankChart'), {{
+      type: 'bar',
+      data: chartData,
+      options: {{
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {{
+          legend: {{
+            position: 'top',
+            labels: {{ color: textColor, usePointStyle: true, padding: 16, font: {{ family: fontFamily }} }},
+          }},
+          tooltip: {{
+            callbacks: {{
+              label: (context) =>
+                context.parsed.y === null ? null : `${{context.dataset.label}}: Rank #${{context.parsed.y}}`,
+            }},
+          }},
+        }},
+        scales: {{
+          x: {{
+            grid: {{ display: false }},
+            ticks: {{ color: textColor }},
+          }},
+          y: {{
+            beginAtZero: true,
+            title: {{ display: true, text: 'Rank (lower is better)', color: textColor }},
+            grid: {{ color: gridColor }},
+            ticks: {{ color: textColor, precision: 0 }},
+          }},
+        }},
+      }},
     }});
   </script>
 </body>

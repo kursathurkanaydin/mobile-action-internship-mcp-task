@@ -1,0 +1,15 @@
+Türkçe::
+  - Keyword metadata (compare_stores_keyword_metadata): "'meditation' kelimesi App Store'da mı yoksa Google Play'de mi daha çok aranıyor?"
+  - Keyword ranking (compare_stores_keyword_ranking): "Clash of Clans'ın 'clan' ve 'war' kelimelerindeki sıralamasını App Store ve Google Play arasında karşılaştırır mısın? (App Store id 529479190, Play Store id com.supercell.clashofclans)"
+  - Ranking history (compare_stores_keyword_ranking_history): "Clash of Clans'ın 'strategy game' kelimesindeki sıralaması son 15 günde App Store ve Google Play arasında nasıl farklılaşmış?"
+  - Top keywords (compare_stores_top_keywords): "Clash of Clans'a en çok arama hacmi getiren kelimeleri App Store ve Google Play için 2026-07-01 tarihinde karşılaştırır mısın?"
+  - Ranking chart (plot_compare_stores_keyword_ranking): "Clash of Clans'ın 'clan' ve 'war' kelimelerindeki App Store vs Google Play sıralamasının grafiğini çizer misin?"
+  - Ranking history chart (plot_compare_stores_keyword_ranking_history): "Clash of Clans'ın 'strategy game' kelimesindeki son 30 günlük App Store vs Google Play sıralama karşılaştırmasının grafiğini gösterir misin?"
+
+English:
+  - Keyword metadata (compare_stores_keyword_metadata): "Is 'meditation' searched more on the App Store or Google Play?"
+  - Keyword ranking (compare_stores_keyword_ranking): "Compare Clash of Clans' ranking for 'clan' and 'war' between the App Store and Google Play (App Store id 529479190, Play Store id com.supercell.clashofclans)."
+  - Ranking history (compare_stores_keyword_ranking_history): "How has Clash of Clans' ranking for 'strategy game' compared between the App Store and Google Play over the last 15 days?"
+  - Top keywords (compare_stores_top_keywords): "Compare the keywords bringing Clash of Clans the most search volume on the App Store vs Google Play for 2026-07-01."
+  - Ranking chart (plot_compare_stores_keyword_ranking): "Can you chart Clash of Clans' App Store vs Google Play ranking for 'clan' and 'war'?"
+  - Ranking history chart (plot_compare_stores_keyword_ranking_history): "Can you show me a chart comparing Clash of Clans' App Store vs Google Play ranking for 'strategy game' over the last 30 days?"

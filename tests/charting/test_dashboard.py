@@ -2,7 +2,13 @@ import json
 import re
 
 from mcp_task.charting import dashboard
-from mcp_task.charting.dashboard import PLAY_STORE, render_dashboard_html, render_keyword_ranking_dashboard
+from mcp_task.charting.dashboard import (
+    COMPARE,
+    PLAY_STORE,
+    render_dashboard_html,
+    render_keyword_ranking_dashboard,
+    render_ranking_comparison_dashboard,
+)
 
 
 def _entry(date: str, rank, device: str = "IPHONE"):
@@ -286,6 +292,49 @@ class TestRenderDashboardHtmlPlayStore:
         assert strateji["data"] == [3, 4]
 
 
+class TestRenderDashboardHtmlCompare:
+    def test_compare_platform_hides_the_device_toggle(self):
+        histories = {"App Store": [_entry("2026-07-01T00:00:00", 1)], "Play Store": [_playstore_entry(
+            "2026-07-01T00:00:00", 3
+        )]}
+        text = render_dashboard_html(
+            histories, "clan", "US", "2026-07-01", "2026-07-01", platform=COMPARE, series_label="Store"
+        ).decode()
+        assert '<div class="device-toggle">' not in text
+
+    def test_compare_platform_merges_app_store_devices_into_one_series(self):
+        # the whole reason COMPARE exists: App Store entries DO have appKind,
+        # but a store-comparison chart should show one merged App Store line,
+        # not per-device lines mixed in with Play Store's single line
+        histories = {
+            "App Store": [
+                _entry("2026-07-01T00:00:00", 20, "IPHONE"),
+                _entry("2026-07-01T00:00:00", 12, "IPAD"),
+            ],
+            "Play Store": [_playstore_entry("2026-07-01T00:00:00", 8)],
+        }
+        text = render_dashboard_html(
+            histories, "clan", "US", "2026-07-01", "2026-07-01", platform=COMPARE, series_label="Store"
+        ).decode()
+
+        chart_data = _extract_json(text, "chartDataByDevice")
+        assert set(chart_data) == {"COMPARE"}
+        view = chart_data["COMPARE"]
+        app_store = next(d for d in view["datasets"] if d["label"] == "App Store")
+        play_store = next(d for d in view["datasets"] if d["label"] == "Play Store")
+        assert app_store["data"] == [12]  # best of IPHONE=20, IPAD=12
+        assert play_store["data"] == [8]
+
+    def test_series_label_store_shows_in_table_header(self):
+        histories = {"App Store": [_entry("2026-07-01T00:00:00", 1)], "Play Store": [_playstore_entry(
+            "2026-07-01T00:00:00", 3
+        )]}
+        text = render_dashboard_html(
+            histories, "clan", "US", "2026-07-01", "2026-07-01", platform=COMPARE, series_label="Store"
+        ).decode()
+        assert "<th>Store</th>" in text
+
+
 class TestRenderDashboardHtmlEscaping:
     def test_keyword_is_html_escaped_in_page_body(self):
         html = render_dashboard_html(
@@ -420,3 +469,78 @@ class TestRenderKeywordRankingDashboard:
         assert "<b>App</b>" not in body
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
         assert "&lt;b&gt;App&lt;/b&gt;" in body
+
+
+class TestRenderRankingComparisonDashboard:
+    def test_returns_utf8_bytes_with_expected_header_info(self):
+        html = render_ranking_comparison_dashboard("Clash of Clans", {"clan": 1}, {"clan": 2}, ["clan"], "US", "2026-08-02")
+
+        assert isinstance(html, bytes)
+        text = html.decode("utf-8")
+        assert "US" in text
+        assert "2026-08-02" in text
+        assert "App Store vs Play Store" in text
+        assert "Clash of Clans" in text
+
+    def test_bar_chart_type_is_used_not_line(self):
+        text = render_ranking_comparison_dashboard(
+            "Clash of Clans", {"clan": 1}, {"clan": 2}, ["clan"], "US", "2026-08-02"
+        ).decode()
+        assert "type: 'bar'" in text
+
+    def test_no_device_toggle_at_all(self):
+        text = render_ranking_comparison_dashboard(
+            "Clash of Clans", {"clan": 1}, {"clan": 2}, ["clan"], "US", "2026-08-02"
+        ).decode()
+        assert '<div class="device-toggle">' not in text
+
+    def test_chart_has_exactly_two_datasets_labeled_by_store(self):
+        text = render_ranking_comparison_dashboard(
+            "Clash of Clans", {"clan": 1, "war": 59}, {"clan": 2, "war": 4}, ["clan", "war"], "US", "2026-08-02"
+        ).decode()
+
+        match = re.search(r"const chartData = (.+?);\n", text)
+        chart_data = json.loads(match.group(1))
+        assert chart_data["labels"] == ["clan", "war"]
+        labels = {ds["label"] for ds in chart_data["datasets"]}
+        assert labels == {"App Store", "Play Store"}
+        app_store = next(d for d in chart_data["datasets"] if d["label"] == "App Store")
+        play_store = next(d for d in chart_data["datasets"] if d["label"] == "Play Store")
+        assert app_store["data"] == [1, 59]
+        assert play_store["data"] == [2, 4]
+
+    def test_keyword_missing_from_one_store_shown_as_null_and_not_ranked(self):
+        text = render_ranking_comparison_dashboard("Clash of Clans", {"clan": 1}, {}, ["clan"], "US", "2026-08-02").decode()
+
+        match = re.search(r"const chartData = (.+?);\n", text)
+        chart_data = json.loads(match.group(1))
+        play_store = next(d for d in chart_data["datasets"] if d["label"] == "Play Store")
+        assert play_store["data"] == [None]
+        assert "Not ranked" in text
+
+    def test_table_has_both_store_columns(self):
+        text = render_ranking_comparison_dashboard(
+            "Clash of Clans", {"clan": 1}, {"clan": 2}, ["clan"], "US", "2026-08-02"
+        ).decode()
+        assert "<th>App Store rank</th>" in text
+        assert "<th>Play Store rank</th>" in text
+        assert "#1" in text
+        assert "#2" in text
+
+    def test_app_name_is_html_escaped(self):
+        text = render_ranking_comparison_dashboard(
+            "<script>alert(1)</script>", {"clan": 1}, {"clan": 2}, ["clan"], "US", "2026-08-02"
+        ).decode()
+        body = text.split("<body>", 1)[1].split("<script>", 1)[0]
+        assert "<script>alert(1)</script>" not in body
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+
+    def test_keyword_is_html_escaped_in_table(self):
+        malicious = "<script>alert(1)</script>"
+        text = render_ranking_comparison_dashboard(
+            "Clash of Clans", {malicious: 1}, {malicious: 2}, [malicious], "US", "2026-08-02"
+        ).decode()
+
+        body = text.split("<body>", 1)[1].split("<script>", 1)[0]
+        assert malicious not in body
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
