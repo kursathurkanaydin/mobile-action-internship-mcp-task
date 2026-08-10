@@ -4,7 +4,7 @@ from mcp_task.validation import require_country_code, require_text, require_trac
 # iTunes' lookup endpoint comfortably supports a couple hundred comma-joined
 # ids per request; this stays well under that so a single batch call never
 # risks a rejected/oversized request.
-_BATCH_LOOKUP_MAX_IDS = 150
+_BATCH_LOOKUP_MAX_IDS = 300
 
 
 def fetch_app_by_name(app_name: str, country: str) -> dict:
