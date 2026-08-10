@@ -6,6 +6,7 @@ from mcp_task.validation import (
     require_date,
     require_date_range,
     require_device,
+    require_package_name,
     require_positive_int,
     require_text,
     require_track_id,
@@ -21,6 +22,21 @@ class TestRequireTrackId:
     def test_rejects_non_positive_or_missing(self, bad_value):
         with pytest.raises(InputValidationError):
             require_track_id(bad_value)
+
+
+class TestRequirePackageName:
+    def test_valid_package_name_passes_through(self):
+        assert require_package_name("com.facebook.katana") == "com.facebook.katana"
+
+    def test_strips_surrounding_whitespace(self):
+        assert require_package_name("  com.facebook.katana  ") == "com.facebook.katana"
+
+    @pytest.mark.parametrize(
+        "bad_value", [None, "", "com", "529479190", "com.face book", ".com.facebook", "com..facebook"]
+    )
+    def test_rejects_non_package_name_values(self, bad_value):
+        with pytest.raises(InputValidationError):
+            require_package_name(bad_value)
 
 
 class TestRequireCountryCode:

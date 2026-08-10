@@ -1,11 +1,5 @@
-import json
-import logging
-from typing import Callable, TypeVar
-
-from redis.exceptions import RedisError
-
 from mcp_task.clients.mobileaction import get
-from mcp_task.config import redis_client
+from mcp_task.services.cache import cached
 from mcp_task.validation import (
     require_country_code,
     require_date,
@@ -15,43 +9,6 @@ from mcp_task.validation import (
     require_text,
     require_track_id,
 )
-
-logger = logging.getLogger(__name__)
-
-# MobileAction's keyword data is a daily batch update, so a fixed historical
-# query (a specific past date/date range) never changes — caching it for a
-# full day trades a little staleness at the very end of the window for a
-# real reduction in repeated-query credit spend.
-_CACHE_TTL_SECONDS = 86400
-
-T = TypeVar("T")
-
-
-def _cached(cache_key: str, fetch: Callable[[], T]) -> T:
-    """Return cached JSON for cache_key if present; otherwise call fetch(), cache it, and return it.
-
-    A Redis outage on either the read or the write degrades to calling
-    fetch() directly rather than failing — caching is an optimization, not
-    something a tool call should depend on to function.
-    """
-    try:
-        cached = redis_client.get(cache_key)
-    except RedisError:
-        logger.warning("Redis unavailable reading %s, falling back to a live fetch", cache_key)
-        cached = None
-
-    if cached:
-        logger.info("cache hit key=%s", cache_key)
-        return json.loads(cached)
-
-    data = fetch()
-
-    try:
-        redis_client.set(cache_key, json.dumps(data), ex=_CACHE_TTL_SECONDS)
-    except RedisError:
-        logger.warning("Redis unavailable writing %s, skipping cache write", cache_key)
-
-    return data
 
 
 def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date: str | None) -> dict:
@@ -77,7 +34,7 @@ def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date:
         return fetch()
 
     cache_key = f"mcp:keyword_ranking:{track_id}:{country_code}:{keywords}:{date}"
-    return _cached(cache_key, fetch)
+    return cached(cache_key, fetch)
 
 
 def fetch_top_keywords(
@@ -91,7 +48,7 @@ def fetch_top_keywords(
     limit = require_positive_int(limit, "limit")
 
     cache_key = f"mcp:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
-    return _cached(
+    return cached(
         cache_key,
         lambda: get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/top-keywords",
@@ -122,7 +79,7 @@ def fetch_keyword_ranking_history(
     require_date_range(start_date, end_date, max_days=30)
 
     cache_key = f"mcp:keyword_ranking_history:{track_id}:{country_code}:{keyword}:{start_date}:{end_date}"
-    return _cached(
+    return cached(
         cache_key,
         lambda: get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
@@ -137,7 +94,7 @@ def fetch_keyword_metadata(country_code: str, keyword: str) -> dict:
     keyword = require_text(keyword, "keyword")
 
     cache_key = f"mcp:keyword_metadata:{country_code}:{keyword}"
-    return _cached(
+    return cached(
         cache_key,
         lambda: get(
             f"/appstore-keyword-ranking/{country_code}/keyword-metadata",
@@ -152,7 +109,7 @@ def fetch_apps_for_keyword(country_code: str, keyword: str) -> dict:
     keyword = require_text(keyword, "keyword")
 
     cache_key = f"mcp:apps_for_keyword:{country_code}:{keyword}"
-    return _cached(
+    return cached(
         cache_key,
         lambda: get(
             f"/appstore-keyword-ranking/{country_code}/keyword-apps",
@@ -176,7 +133,7 @@ def fetch_organic_keywords(track_id: int, country_code: str, device: str, date: 
     require_positive_int(limit, "limit")
 
     cache_key = f"mcp:organic_keywords:{track_id}:{country_code}:{device}:{date}"
-    return _cached(
+    return cached(
         cache_key,
         lambda: get(
             f"/appstore-keyword-ranking/{track_id}/{country_code}/{device}/organic-keywords",

@@ -1,10 +1,12 @@
 # MobileAction MCP Server
 
 An [MCP](https://modelcontextprotocol.io) server that exposes MobileAction's
-**App Store Keyword Services** API as tools an LLM (Claude Desktop, Cursor,
-MCP Inspector, etc.) can call directly. Ask something like *"What keywords
-does Duolingo rank best for on the US App Store?"* and the model resolves the
-app, calls the right tool, and answers from real MobileAction data.
+**Keyword Services** API — for both the **App Store** and **Google Play
+Store** — as tools an LLM (Claude Desktop, Cursor, MCP Inspector, etc.) can
+call directly. Ask something like *"What keywords does Duolingo rank best for
+on the US App Store?"* or *"What's Duolingo's organic impression share for
+'language learning' on Google Play?"* and the model resolves the app, calls
+the right tool, and answers from real MobileAction data.
 
 ## Why Python + FastMCP
 
@@ -28,7 +30,7 @@ you pass one keyword or four).
 |---|---|---|
 | `get_remaining_api_credits` | Check the MobileAction API key's credit balance. | Free |
 
-**Keyword Services** (MobileAction `/appstore-keyword-ranking/*`)
+**App Store Keyword Services** (MobileAction `/appstore-keyword-ranking/*`)
 | Tool | Description | Credits/call |
 |---|---|---|
 | `get_keyword_ranking` | Current rank for one or more keywords, one day. **Redis-cached for 24h** when a `date` is given (bonus) — an undated "most recent" query always fetches live. | 3, 0 on a cache hit |
@@ -37,6 +39,22 @@ you pass one keyword or four).
 | `get_keyword_ranking_history` | Rank history for one keyword for an app over a date range. **Redis-cached for 24h** (bonus). | 10, 0 on a cache hit |
 | `get_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
 | `get_organic_keywords` | Full list of keywords an app organically ranks for. **Redis-cached for 24h** (bonus). | **50**, 0 on a cache hit |
+
+**Google Play Store Keyword Services** (MobileAction `/playstore-keyword-ranking/*`) —
+same shape as App Store above, except `track_id` is the app's package name
+(e.g. `com.facebook.katana`) instead of a numeric id, and there's no
+device (iPhone/iPad) split since Android has none. All Redis-cached for 24h
+the same way.
+| Tool | Description | Credits/call |
+|---|---|---|
+| `get_playstore_keyword_ranking` | Current rank for one or more keywords, one day. | 3, 0 on a cache hit |
+| `get_playstore_apps_for_keyword` | Which apps rank for a given keyword. | 5, 0 on a cache hit |
+| `get_playstore_keyword_metadata` | Search volume/popularity for a keyword. | 5, 0 on a cache hit |
+| `get_playstore_share_of_category` | Which app categories a keyword's search results fall into. | 5, 0 on a cache hit |
+| `get_playstore_keyword_ranking_history` | Rank history for one keyword for an app over a date range. | 10, 0 on a cache hit |
+| `get_playstore_organic_impression_share` | Impression share for a keyword split across the apps competing for it. | 20, 0 on a cache hit |
+| `get_playstore_top_keywords` | Keywords bringing an app the most search volume. | 20, 0 on a cache hit |
+| `get_playstore_organic_keywords` | Full list of keywords an app organically ranks for. | **50**, 0 on a cache hit |
 
 **App lookup** (helper — calls Apple's free iTunes API, not MobileAction, since
 MobileAction's endpoints need a numeric `trackId` rather than an app name)
@@ -102,6 +120,23 @@ get_app_name                                     (Apple's iTunes API, not Mobile
 
 get_app_names_batch                              (Apple's iTunes API, not MobileAction)
   GET https://itunes.apple.com/lookup?id=570060128,389801252,284882215&country=us
+```
+
+Google Play Store tools follow the same pattern under `/playstore-keyword-ranking/*`,
+using a package name instead of a numeric trackId (`com.duolingo` below):
+
+```
+get_playstore_keyword_ranking
+  GET https://api.mobileaction.co/playstore-keyword-ranking/com.duolingo/US/keywordrankings
+      ?keywords=language+learning&token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_organic_impression_share
+  GET https://api.mobileaction.co/playstore-keyword-ranking/organic-impression-share/keyword/meditation/US
+      ?token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_share_of_category
+  GET https://api.mobileaction.co/playstore-keyword-ranking/share-of-category/keyword/meditation/US
+      ?token=YOUR_MOBILEACTION_API_KEY
 ```
 
 ## Setup
@@ -186,6 +221,8 @@ More prompts to try once connected (Turkish versions in
 - Reverse lookup: *"What app has track id 570060128?"*
 - Compare history: *"Can you compare Clash of Clans and Clash Royale's ranking history for the keyword 'strategy game' on the US App Store over the last 15 days?"*
 - Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
+- Google Play ranking: *"What rank does com.duolingo have for 'language learning' on the US Play Store?"*
+- Google Play impression share: *"What's the organic impression share for 'meditation' on Google Play in the US?"*
 
 ## Running the tests
 
@@ -205,3 +242,12 @@ src/mcp_task/
   charting/    HTML/Chart.js dashboard rendering
   tools/       the @mcp.tool definitions themselves
 ```
+
+Files are grouped by store, not lumped into one growing module: App Store
+keyword logic lives in `services/appstore_keyword_service.py` /
+`tools/appstore_keyword_services.py`, Google Play's in
+`services/playstore_keyword_service.py` / `tools/playstore_keyword_services.py`,
+sharing `services/cache.py` for the Redis-caching behavior both use. New tool
+modules under `tools/` are picked up automatically — `mcp_instance.py` walks
+that package at startup instead of hand-listing imports, so adding a new
+store or tool file doesn't require touching it.

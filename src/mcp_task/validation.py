@@ -5,6 +5,7 @@ from mcp_task.errors import ToolError
 
 _COUNTRY_CODE_RE = re.compile(r"^[A-Za-z]{2}$")
 _VALID_DEVICES = {"IPHONE", "IPAD"}
+_PACKAGE_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$")
 
 
 class InputValidationError(ToolError):
@@ -18,6 +19,16 @@ def require_track_id(track_id: int) -> int:
             "(e.g. 529479190). Use get_app_store_id to look one up by app name."
         )
     return track_id
+
+
+def require_package_name(track_id: str) -> str:
+    stripped = (track_id or "").strip()
+    if not _PACKAGE_NAME_RE.match(stripped):
+        raise InputValidationError(
+            f"'{track_id}' is not a valid Google Play track id — it must be a package name "
+            "in reverse-domain form (e.g. 'com.facebook.katana')."
+        )
+    return stripped
 
 
 def require_country_code(country_code: str, upper: bool = True) -> str:

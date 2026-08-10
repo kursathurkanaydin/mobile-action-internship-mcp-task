@@ -1,5 +1,5 @@
 from mcp_task.errors import ToolError
-from mcp_task.tools import keyword_services as ks
+from mcp_task.tools import appstore_keyword_services as ks
 
 
 class TestGetKeywordRanking:
