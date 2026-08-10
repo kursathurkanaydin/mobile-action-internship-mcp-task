@@ -250,9 +250,9 @@ Store for 2026-07-01."*
 ## Example prompts
 
 More prompts to try once connected, one per tool, split by store (Turkish
-versions in the matching `src/mcp_task/example_prompts_*.txt` file):
+versions in the matching `example_prompts.txt` file):
 
-**App Store** ([`example_prompts_appstore.txt`](src/mcp_task/example_prompts_appstore.txt))
+**App Store** ([`tools/appstore/example_prompts.txt`](src/mcp_task/tools/appstore/example_prompts.txt))
 
 - Credit check: *"How many credits do I have left on my MobileAction API key?"*
 - App search: *"Find Clash of Clans' App Store id."*
@@ -269,7 +269,7 @@ versions in the matching `src/mcp_task/example_prompts_*.txt` file):
 - Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
 - Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US store?"*
 
-**Google Play** ([`example_prompts_playstore.txt`](src/mcp_task/example_prompts_playstore.txt))
+**Google Play** ([`tools/playstore/example_prompts.txt`](src/mcp_task/tools/playstore/example_prompts.txt))
 
 - Search by name for a package id (unofficial/best-effort): *"Can you find Spotify's Play Store package id?"*
 - App lookup by package id: *"What app has the package id com.duolingo?"*
@@ -309,8 +309,8 @@ src/mcp_task/
     playstore.py Play Store-only (package_name, package_name_list)
   charting/    HTML/Chart.js dashboard rendering — generic, reused by any store's chart tools
   tools/       the @mcp.tool definitions themselves
-    appstore/    keyword_services.py, app_lookup.py, charts.py
-    playstore/   keyword_services.py, app_lookup.py, charts.py
+    appstore/    keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
+    playstore/   keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
     account.py   (not store-specific, stays top-level)
 ```
 
@@ -357,7 +357,7 @@ Follow the same three-layer path every existing tool takes:
 
 Then mirror the same `<store>/` path under `tests/` for each layer you
 touched, and add a row to the relevant credits table + an entry in
-`example_prompts_<store>.txt` in this README.
+`tools/<store>/example_prompts.txt` in this README.
 
 ### Error handling
 
