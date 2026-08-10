@@ -52,7 +52,7 @@ the same way.
 | `get_playstore_keyword_metadata` | Search volume/popularity for a keyword. | 5, 0 on a cache hit |
 | `get_playstore_share_of_category` | Which app categories a keyword's search results fall into. | 5, 0 on a cache hit |
 | `get_playstore_keyword_ranking_history` | Rank history for one keyword for an app over a date range. | 10, 0 on a cache hit |
-| `get_playstore_keyword_ranking_history_multi` | Rank history for TWO OR MORE keywords for one app over a date range, in one call. | 10 × number of keywords (one history call per keyword) |
+| `get_playstore_keyword_ranking_history_multi` | Rank history for one or more keywords for one app over a date range, in one call. | 10 × number of keywords (one history call per keyword) |
 | `get_playstore_organic_impression_share` | Impression share for a keyword split across the apps competing for it. | 20, 0 on a cache hit |
 | `get_playstore_top_keywords` | Keywords bringing an app the most search volume. | 20, 0 on a cache hit |
 | `get_playstore_organic_keywords` | Full list of keywords an app organically ranks for. | **50**, 0 on a cache hit |
@@ -87,6 +87,17 @@ not a trusted single answer. Not cached, since it's a live search.
 | `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. Internally a single-id call to the same endpoint `_batch` uses (the pricier "detailed" endpoint's extra fields — full description, screenshots, rating breakdown — aren't used here). | 1, 0 on a cache hit |
 | `get_playstore_app_names_batch` | Resolve multiple package ids to names in one request (flat cost regardless of count). | 1, 0 on a cache hit |
 
+**Cross-store comparison** (bonus — needs the SAME app's id on both stores;
+there's no automatic mapping between an App Store trackId and a Play Store
+package id, so both are always required explicitly). Cost is the sum of both
+stores' underlying calls.
+| Tool | Description | Credits/call |
+|---|---|---|
+| `compare_stores_keyword_metadata` | Search volume/popularity for a keyword on both stores. App-independent — no app id needed. | 5 + 5, 0 per side on a cache hit |
+| `compare_stores_keyword_ranking` | Current rank for one or more keywords on both stores, one day. | 3 + 3, 0 per side on a cache hit |
+| `compare_stores_keyword_ranking_history` | Rank history for one keyword on both stores over a date range. | 10 + 10, 0 per side on a cache hit |
+| `compare_stores_top_keywords` | Keywords bringing the app the most search volume on each store — the two lists are independent, shown side by side. | 20 + 20, 0 per side on a cache hit |
+
 **Interactive charts** (bonus — render the keyword data above as a
 self-contained HTML page with a live Chart.js chart, instead of raw JSON).
 Cost is just the underlying MobileAction call(s) they wrap — no extra charge
@@ -95,8 +106,10 @@ for rendering.
 |---|---|---|
 | `plot_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_keyword_ranking`) |
 | `plot_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_keyword_ranking_history`) |
-| `compare_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time. | 10 × number of apps (one history call per app) |
+| `compare_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
 | `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
+| `plot_compare_stores_keyword_ranking` | Grouped bar chart comparing one app's App Store vs Play Store rank, per keyword, one day. | 3 + 3 (same as `compare_stores_keyword_ranking`) |
+| `plot_compare_stores_keyword_ranking_history` | Line chart comparing one app's App Store vs Play Store rank over time, one keyword. App Store's iPhone/iPad ranks are pre-merged — no device toggle. | 10 + 10 (same as `compare_stores_keyword_ranking_history`) |
 
 ### Example requests
 
@@ -180,6 +193,12 @@ get_playstore_app_names_batch                    (MobileAction, unlike the free 
   GET https://api.mobileaction.co/playstore-appinfo-v2/app/simple/en
       ?trackIds=com.duolingo,com.facebook.katana&token=YOUR_MOBILEACTION_API_KEY
 ```
+
+`compare_stores_*` / `plot_compare_stores_*` tools call the matching App
+Store and Play Store endpoints above once each, in one call — e.g.
+`compare_stores_keyword_ranking(529479190, "com.supercell.clashofclans", "US", "clan")`
+hits the exact same two `get_keyword_ranking` / `get_playstore_keyword_ranking`
+URLs shown earlier, combined under `{"app_store": ..., "play_store": ...}`.
 
 ## Setup
 
@@ -285,6 +304,15 @@ versions in the matching `example_prompts.txt` file):
 - Organic impression share: *"What's the organic impression share for 'meditation' split across competing apps on the US Play Store?"*
 - Share of category: *"What app categories does the keyword 'meditation' fall into on the US Play Store?"*
 
+**Cross-store comparison** ([`tools/compare/example_prompts.txt`](src/mcp_task/tools/compare/example_prompts.txt))
+
+- Keyword metadata: *"Is 'meditation' searched more on the App Store or Google Play?"*
+- Keyword ranking: *"Compare Clash of Clans' ranking for 'clan' and 'war' between the App Store and Google Play (App Store id 529479190, Play Store id com.supercell.clashofclans)."*
+- Ranking history: *"How has Clash of Clans' ranking for 'strategy game' compared between the App Store and Google Play over the last 15 days?"*
+- Top keywords: *"Compare the keywords bringing Clash of Clans the most search volume on the App Store vs Google Play for 2026-07-01."*
+- Ranking chart: *"Can you chart Clash of Clans' App Store vs Google Play ranking for 'clan' and 'war'?"*
+- Ranking history chart: *"Can you show me a chart comparing Clash of Clans' App Store vs Google Play ranking for 'strategy game' over the last 30 days?"*
+
 ## Running the tests
 
 ```bash
@@ -311,6 +339,8 @@ src/mcp_task/
   tools/       the @mcp.tool definitions themselves
     appstore/    keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
     playstore/   keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
+    compare/     keyword_services.py, charts.py — needs BOTH stores, so it's
+                 neither appstore/ nor playstore/; see below
     account.py   (not store-specific, stays top-level)
 ```
 
@@ -322,11 +352,17 @@ have a `charts.py`, sharing the same `charting/` rendering package via
 vs `PLAY_STORE` — a `StorePlatform` bundling the device axis to split by and
 the display label, since Play Store history entries have no device field at
 all and get a single merged view with the toggle hidden instead of a real
-iPhone/iPad split). New tool files (or a whole new store subpackage) are
-picked up automatically: `mcp_instance.py` recursively walks `tools/` at
-startup (`pkgutil.walk_packages`, not the non-recursive `iter_modules` —
-subpackages need the recursive version) instead of hand-listing imports, so
-nothing needs to be wired in by hand.
+iPhone/iPad split). `services/compare/` and `tools/compare/` are a third
+category alongside `appstore/`/`playstore/`, for tools that need data from
+*both* stores at once (e.g. `compare_stores_keyword_ranking`) — they import
+from both stores' service modules directly rather than duplicating fetch
+logic, and their charts reuse the same `render_dashboard_html`/`StorePlatform`
+mechanism via a third platform, `COMPARE` (a single merged axis labeling each
+series by store instead of by device). New tool files (or a whole new store
+or compare subpackage) are picked up automatically: `mcp_instance.py`
+recursively walks `tools/` at startup (`pkgutil.walk_packages`, not the
+non-recursive `iter_modules` — subpackages need the recursive version)
+instead of hand-listing imports, so nothing needs to be wired in by hand.
 
 Redis cache keys follow the same split: App Store keys are
 `mcp:appstore:<thing>:...`, Play Store keys are `mcp:playstore:<thing>:...` —
@@ -358,6 +394,21 @@ Follow the same three-layer path every existing tool takes:
 Then mirror the same `<store>/` path under `tests/` for each layer you
 touched, and add a row to the relevant credits table + an entry in
 `tools/<store>/example_prompts.txt` in this README.
+
+Needs data from both stores at once (a comparison)? It goes under
+`services/compare/` / `tools/compare/` instead of either store's own
+subpackage — see `services/compare/keyword_service.py` for the pattern
+(import both stores' service modules, call each with its own id, combine
+under `{"app_store": ..., "play_store": ...}`). **Check for a tool-name
+collision before naming it** — tool names are global across the whole MCP
+server, not namespaced by Python module, and nothing catches a
+same-named `@mcp.tool` in a different file at import time (the second
+one silently replaces the first in FastMCP's registry, with only a
+runtime warning easy to miss). This bit us once already:
+`compare_keyword_ranking_history` already existed (App Store, comparing
+apps) before a cross-store tool was almost given the exact same name
+(comparing stores) — hence the `compare_stores_*` prefix for anything
+that compares two stores rather than two apps on the same store.
 
 ### Error handling
 
