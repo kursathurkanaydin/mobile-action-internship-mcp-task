@@ -84,7 +84,7 @@ not a trusted single answer. Not cached, since it's a live search.
 | Tool | Description | Credits/call |
 |---|---|---|
 | `get_playstore_app_id` | Search Google Play by name for candidate package ids. **Unofficial/best-effort** (see above). | Free (unofficial scraper) |
-| `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. | 5, 0 on a cache hit |
+| `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. Internally a single-id call to the same endpoint `_batch` uses (the pricier "detailed" endpoint's extra fields — full description, screenshots, rating breakdown — aren't used here). | 1, 0 on a cache hit |
 | `get_playstore_app_names_batch` | Resolve multiple package ids to names in one request (flat cost regardless of count). | 1, 0 on a cache hit |
 
 **Interactive charts** (bonus — render the keyword data above as a
@@ -172,9 +172,9 @@ get_playstore_share_of_category
 get_playstore_app_id                             (unofficial google-play-scraper, not MobileAction or Google)
   scrapes https://play.google.com/store/search?q=WhatsApp&c=apps&hl=en&gl=us
 
-get_playstore_app_name                           (MobileAction, unlike the free iTunes lookup above)
-  GET https://api.mobileaction.co/playstore-appinfo-v2/app/detailed/com.duolingo
-      ?langCode=en&token=YOUR_MOBILEACTION_API_KEY
+get_playstore_app_name                           (MobileAction, unlike the free iTunes lookup above — same endpoint as _batch, just one id)
+  GET https://api.mobileaction.co/playstore-appinfo-v2/app/simple/en
+      ?trackIds=com.duolingo&token=YOUR_MOBILEACTION_API_KEY
 
 get_playstore_app_names_batch                    (MobileAction, unlike the free iTunes lookup above)
   GET https://api.mobileaction.co/playstore-appinfo-v2/app/simple/en

@@ -3,7 +3,7 @@ from mcp_task.clients.mobileaction import MobileActionAPIError, get
 from mcp_task.config import BATCH_LOOKUP_MAX_IDS
 from mcp_task.services.cache import cached
 from mcp_task.validation.common import require_country_code, require_text
-from mcp_task.validation.playstore import require_package_name, require_package_name_list
+from mcp_task.validation.playstore import require_package_name_list
 
 # Unlike the App Store (Apple's free, authoritative iTunes API supports
 # search-by-name), MobileAction has no Google Play endpoint to search by app
@@ -16,26 +16,20 @@ from mcp_task.validation.playstore import require_package_name, require_package_
 
 
 def fetch_app_by_track_id(track_id: str, lang_code: str = "en") -> dict:
-    """Validate inputs and fetch Google Play app details by package id (or Play Store URL).
+    """Validate inputs and fetch a Google Play app's name/details by package id (or Play Store URL).
 
-    An unrecognized package id gets a 204/empty body from MobileAction rather
-    than a 404, so that case is translated into the same MobileActionAPIError
-    shape a real 404 would produce elsewhere in this codebase.
+    Delegates to fetch_apps_by_track_ids with a single id, using the same
+    1-credit "simple" batch endpoint rather than the 5-credit "detailed"
+    one — the extra fields "detailed" has (full description, screenshots,
+    rating breakdown, etc.) aren't used anywhere this is called, so there's
+    no reason to pay 5x for them.
     """
-    track_id = require_package_name(track_id)
-    lang_code = require_text(lang_code, "lang_code")
-
-    cache_key = f"mcp:playstore:app_detail:{track_id}:{lang_code}"
-    data = cached(
-        cache_key,
-        lambda: get(f"/playstore-appinfo-v2/app/detailed/{track_id}", params={"langCode": lang_code}),
-    )
-
-    if data is None:
+    resolved_ids, apps = fetch_apps_by_track_ids(track_id, lang_code)
+    if not apps:
         raise MobileActionAPIError(
-            f"Not found: no Google Play app exists for package id '{track_id}'.", status_code=404
+            f"Not found: no Google Play app exists for package id '{resolved_ids[0]}'.", status_code=404
         )
-    return data
+    return apps[0]
 
 
 def fetch_apps_by_name(query: str, country: str = "us", lang_code: str = "en") -> list[dict]:

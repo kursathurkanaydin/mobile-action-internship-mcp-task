@@ -47,65 +47,58 @@ class _UntouchableRedis:
 
 
 class TestFetchAppByTrackId:
+    """fetch_app_by_track_id delegates to fetch_apps_by_track_ids (the 1-credit
+    "simple" endpoint) with a single id, instead of the 5-credit "detailed"
+    endpoint — see app_service.py's docstring for why. These tests mock
+    fetch_apps_by_track_ids directly rather than the HTTP layer, since that's
+    the actual collaborator now.
+    """
+
     def test_invalid_track_id_raises_before_any_request(self, monkeypatch):
         monkeypatch.setattr(pas, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _UntouchableRedis())
         with pytest.raises(ToolError):
             pas.fetch_app_by_track_id("not-a-package-name")
 
-    def test_valid_bare_id_delegates_with_expected_args(self, monkeypatch):
+    def test_delegates_to_fetch_apps_by_track_ids_with_the_single_id(self, monkeypatch):
         captured = {}
         fake_app = {"trackId": "com.block.juggle", "name": "Block Blast!"}
 
-        def fake_get(path, params):
-            captured["path"] = path
-            captured["params"] = params
-            return fake_app
+        def fake_fetch_apps_by_track_ids(track_ids, lang_code):
+            captured["track_ids"] = track_ids
+            captured["lang_code"] = lang_code
+            return (["com.block.juggle"], [fake_app])
 
-        fake_redis = _FakeRedis()
-        monkeypatch.setattr(pas, "get", fake_get)
-        monkeypatch.setattr(cache, "redis_client", fake_redis)
+        monkeypatch.setattr(pas, "fetch_apps_by_track_ids", fake_fetch_apps_by_track_ids)
 
         result = pas.fetch_app_by_track_id("com.block.juggle", "en")
 
-        assert captured["path"] == "/playstore-appinfo-v2/app/detailed/com.block.juggle"
-        assert captured["params"] == {"langCode": "en"}
+        assert captured == {"track_ids": "com.block.juggle", "lang_code": "en"}
         assert result == fake_app
-        assert fake_redis.set_calls[0][0] == "mcp:playstore:app_detail:com.block.juggle:en"
 
-    def test_play_store_url_is_resolved_to_its_package_id(self, monkeypatch):
+    def test_play_store_url_is_passed_through_unresolved_to_fetch_apps_by_track_ids(self, monkeypatch):
+        # id/URL resolution happens inside fetch_apps_by_track_ids (via
+        # require_package_name_list), not here — no need to duplicate it
         captured = {}
-        fake_app = {"trackId": "com.block.juggle", "name": "Block Blast!"}
+        url = "https://play.google.com/store/apps/details?id=com.block.juggle&hl=tr"
 
-        def fake_get(path, params):
-            captured["path"] = path
-            return fake_app
+        def fake_fetch_apps_by_track_ids(track_ids, lang_code):
+            captured["track_ids"] = track_ids
+            return (["com.block.juggle"], [{"trackId": "com.block.juggle", "name": "Block Blast!"}])
 
-        monkeypatch.setattr(pas, "get", fake_get)
-        monkeypatch.setattr(cache, "redis_client", _FakeRedis())
+        monkeypatch.setattr(pas, "fetch_apps_by_track_ids", fake_fetch_apps_by_track_ids)
 
-        result = pas.fetch_app_by_track_id(
-            "https://play.google.com/store/apps/details?id=com.block.juggle&hl=tr"
-        )
+        result = pas.fetch_app_by_track_id(url)
 
-        assert captured["path"] == "/playstore-appinfo-v2/app/detailed/com.block.juggle"
-        assert result == fake_app
+        assert captured["track_ids"] == url
+        assert result == {"trackId": "com.block.juggle", "name": "Block Blast!"}
 
     def test_not_found_raises_mobileaction_api_error(self, monkeypatch):
-        monkeypatch.setattr(pas, "get", lambda path, params: None)
-        monkeypatch.setattr(cache, "redis_client", _FakeRedis())
+        monkeypatch.setattr(pas, "fetch_apps_by_track_ids", lambda *a: (["com.does.not.exist"], []))
 
-        with pytest.raises(MobileActionAPIError, match="Not found"):
+        with pytest.raises(MobileActionAPIError, match="Not found") as exc_info:
             pas.fetch_app_by_track_id("com.does.not.exist")
-
-    def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:playstore:app_detail:com.block.juggle:en"
-        cached_data = {"trackId": "com.block.juggle", "name": "Block Blast!"}
-        monkeypatch.setattr(pas, "get", _no_call)
-        monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))
-
-        result = pas.fetch_app_by_track_id("com.block.juggle", "en")
-        assert result == cached_data
+        assert exc_info.value.status_code == 404
 
 
 class TestFetchAppsByName:
