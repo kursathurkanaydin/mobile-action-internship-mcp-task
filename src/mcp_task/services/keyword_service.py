@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Callable, TypeVar
 
 from redis.exceptions import RedisError
 
@@ -17,41 +18,22 @@ from mcp_task.validation import (
 
 logger = logging.getLogger(__name__)
 
-_TOP_KEYWORDS_CACHE_SECONDS = 86400  # top keywords for a past day never change, so cache generously
+# MobileAction's keyword data is a daily batch update, so a fixed historical
+# query (a specific past date/date range) never changes — caching it for a
+# full day trades a little staleness at the very end of the window for a
+# real reduction in repeated-query credit spend.
+_CACHE_TTL_SECONDS = 86400
+
+T = TypeVar("T")
 
 
-def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date: str | None) -> dict:
-    """Validate inputs and fetch current keyword ranking(s) for an app."""
-    track_id = require_track_id(track_id)
-    country_code = require_country_code(country_code)
-    keywords = require_text(keywords, "keywords")
-    if date is not None:
-        date = require_date(date, "date")
+def _cached(cache_key: str, fetch: Callable[[], T]) -> T:
+    """Return cached JSON for cache_key if present; otherwise call fetch(), cache it, and return it.
 
-    return get(
-        f"/appstore-keyword-ranking/{track_id}/{country_code}/keywordrankings",
-        params={"keywords": keywords, "date": date},
-    )
-
-
-def fetch_top_keywords(
-    track_id: int, country_code: str, date: str, device: str | None, limit: int | None
-) -> dict:
-    """Validate inputs and fetch the keywords bringing an app the most search volume.
-
-    Cached in Redis per (track_id, country_code, date, device, limit) combination
-    to avoid re-spending MobileAction credits on a repeated query. A Redis outage
-    degrades to a plain live fetch rather than failing the tool call — caching is
-    an optimization, not something the tool should depend on to function.
+    A Redis outage on either the read or the write degrades to calling
+    fetch() directly rather than failing — caching is an optimization, not
+    something a tool call should depend on to function.
     """
-    track_id = require_track_id(track_id)
-    country_code = require_country_code(country_code)
-    date = require_date(date, "date")
-    device = require_device(device, required=False)
-    limit = require_positive_int(limit, "limit")
-
-    cache_key = f"mcp:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
-
     try:
         cached = redis_client.get(cache_key)
     except RedisError:
@@ -59,20 +41,63 @@ def fetch_top_keywords(
         cached = None
 
     if cached:
-        logger.info("cache hit for fetch_top_keywords key=%s", cache_key)
+        logger.info("cache hit key=%s", cache_key)
         return json.loads(cached)
 
-    data = get(
-        f"/appstore-keyword-ranking/{track_id}/{country_code}/top-keywords",
-        params={"date": date, "device": device, "limit": limit},
-    )
+    data = fetch()
 
     try:
-        redis_client.set(cache_key, json.dumps(data), ex=_TOP_KEYWORDS_CACHE_SECONDS)
+        redis_client.set(cache_key, json.dumps(data), ex=_CACHE_TTL_SECONDS)
     except RedisError:
         logger.warning("Redis unavailable writing %s, skipping cache write", cache_key)
 
     return data
+
+
+def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date: str | None) -> dict:
+    """Validate inputs and fetch current keyword ranking(s) for an app.
+
+    Only cached when an explicit date is given. Without one, "current" means
+    "whatever MobileAction's most recent day is" — a moving target that a
+    fixed cache key can't safely represent, so that case always fetches live.
+    """
+    track_id = require_track_id(track_id)
+    country_code = require_country_code(country_code)
+    keywords = require_text(keywords, "keywords")
+    if date is not None:
+        date = require_date(date, "date")
+
+    def fetch():
+        return get(
+            f"/appstore-keyword-ranking/{track_id}/{country_code}/keywordrankings",
+            params={"keywords": keywords, "date": date},
+        )
+
+    if date is None:
+        return fetch()
+
+    cache_key = f"mcp:keyword_ranking:{track_id}:{country_code}:{keywords}:{date}"
+    return _cached(cache_key, fetch)
+
+
+def fetch_top_keywords(
+    track_id: int, country_code: str, date: str, device: str | None, limit: int | None
+) -> dict:
+    """Validate inputs and fetch the keywords bringing an app the most search volume."""
+    track_id = require_track_id(track_id)
+    country_code = require_country_code(country_code)
+    date = require_date(date, "date")
+    device = require_device(device, required=False)
+    limit = require_positive_int(limit, "limit")
+
+    cache_key = f"mcp:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
+    return _cached(
+        cache_key,
+        lambda: get(
+            f"/appstore-keyword-ranking/{track_id}/{country_code}/top-keywords",
+            params={"date": date, "device": device, "limit": limit},
+        ),
+    )
 
 
 def fetch_keyword_ranking_history(
@@ -89,15 +114,20 @@ def fetch_keyword_ranking_history(
     validation. Raises InputValidationError on a bad input or
     MobileActionAPIError on failure; returns the raw list of per-day,
     per-device {trackId, keyword, rank, countryCode, date, appKind} entries.
+    Both dates are always concrete and in the past, so this is always cached.
     """
     track_id = require_track_id(track_id)
     country_code = require_country_code(country_code)
     keyword = require_text(keyword, "keyword")
     require_date_range(start_date, end_date, max_days=30)
 
-    return get(
-        f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
-        params={"startDate": start_date, "endDate": end_date},
+    cache_key = f"mcp:keyword_ranking_history:{track_id}:{country_code}:{keyword}:{start_date}:{end_date}"
+    return _cached(
+        cache_key,
+        lambda: get(
+            f"/appstore-keyword-ranking/{track_id}/{country_code}/{keyword}/keywordrankings",
+            params={"startDate": start_date, "endDate": end_date},
+        ),
     )
 
 
@@ -106,9 +136,13 @@ def fetch_keyword_metadata(country_code: str, keyword: str) -> dict:
     country_code = require_country_code(country_code)
     keyword = require_text(keyword, "keyword")
 
-    return get(
-        f"/appstore-keyword-ranking/{country_code}/keyword-metadata",
-        params={"keyword": keyword},
+    cache_key = f"mcp:keyword_metadata:{country_code}:{keyword}"
+    return _cached(
+        cache_key,
+        lambda: get(
+            f"/appstore-keyword-ranking/{country_code}/keyword-metadata",
+            params={"keyword": keyword},
+        ),
     )
 
 
@@ -117,21 +151,35 @@ def fetch_apps_for_keyword(country_code: str, keyword: str) -> dict:
     country_code = require_country_code(country_code)
     keyword = require_text(keyword, "keyword")
 
-    return get(
-        f"/appstore-keyword-ranking/{country_code}/keyword-apps",
-        params={"keyword": keyword},
+    cache_key = f"mcp:apps_for_keyword:{country_code}:{keyword}"
+    return _cached(
+        cache_key,
+        lambda: get(
+            f"/appstore-keyword-ranking/{country_code}/keyword-apps",
+            params={"keyword": keyword},
+        ),
     )
 
 
 def fetch_organic_keywords(track_id: int, country_code: str, device: str, date: str, limit: int) -> dict:
-    """Validate inputs and fetch the full organic keyword list for an app."""
+    """Validate inputs and fetch the full organic keyword list for an app.
+
+    limit isn't part of the cache key or the API call itself — the API
+    always returns the full list regardless, and the caller (get_organic_keywords)
+    caps/sorts it client-side after this returns. Costs 50 credits per live
+    call, so this is the endpoint that benefits most from caching.
+    """
     track_id = require_track_id(track_id)
     country_code = require_country_code(country_code)
     device = require_device(device, required=True)
     date = require_date(date, "date")
     require_positive_int(limit, "limit")
 
-    return get(
-        f"/appstore-keyword-ranking/{track_id}/{country_code}/{device}/organic-keywords",
-        params={"date": date},
+    cache_key = f"mcp:organic_keywords:{track_id}:{country_code}:{device}:{date}"
+    return _cached(
+        cache_key,
+        lambda: get(
+            f"/appstore-keyword-ranking/{track_id}/{country_code}/{device}/organic-keywords",
+            params={"date": date},
+        ),
     )
