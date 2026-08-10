@@ -1,4 +1,5 @@
 Türkçe::
+  - İsimden paket id arama (get_playstore_app_id, resmi olmayan/best-effort): "Spotify'ın Play Store'daki paket id'sini bulur musun?"
   - Paket id'sinden uygulama bulma (get_playstore_app_name): "com.duolingo paket id'li uygulama hangisi?"
   - Play Store linkinden uygulama bulma (get_playstore_app_name): "Bu uygulama hangisi? https://play.google.com/store/apps/details?id=com.block.juggle"
   - Toplu uygulama adı çözümleme (get_playstore_app_names_batch): "com.duolingo ve com.block.juggle paket id'li uygulamaların isimlerini gösterir misin?"
@@ -12,6 +13,7 @@ Türkçe::
   - Share of category (get_playstore_share_of_category): "'meditation' kelimesi ABD Play Store'unda hangi uygulama kategorilerinde çıkıyor?"
 
 English:
+  - Search by name for a package id (get_playstore_app_id, unofficial/best-effort): "Can you find Spotify's Play Store package id?"
   - App lookup by package id (get_playstore_app_name): "What app has the package id com.duolingo?"
   - App lookup from a Play Store URL (get_playstore_app_name): "What app is this? https://play.google.com/store/apps/details?id=com.block.juggle"
   - Batch app name lookup (get_playstore_app_names_batch): "Can you show me the names of the apps with package ids com.duolingo and com.block.juggle?"

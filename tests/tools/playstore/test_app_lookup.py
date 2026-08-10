@@ -2,6 +2,45 @@ from mcp_task.errors import ToolError
 from mcp_task.tools.playstore import app_lookup as playstore_app_lookup
 
 
+class TestGetPlaystoreAppId:
+    def test_success_shapes_apps_list_from_appid_and_title(self, monkeypatch):
+        fake_apps = [
+            {"appId": "com.whatsapp.w4b", "title": "WhatsApp Business"},
+            {"appId": "org.telegram.messenger", "title": "Telegram"},
+        ]
+        monkeypatch.setattr(playstore_app_lookup, "fetch_apps_by_name", lambda query, country, lang_code: fake_apps)
+
+        result = playstore_app_lookup.get_playstore_app_id("WhatsApp", "us", "en")
+        assert result == {
+            "apps": [
+                {
+                    "app_id": "com.whatsapp.w4b",
+                    "name": "WhatsApp Business",
+                    "url": "https://play.google.com/store/apps/details?id=com.whatsapp.w4b",
+                },
+                {
+                    "app_id": "org.telegram.messenger",
+                    "name": "Telegram",
+                    "url": "https://play.google.com/store/apps/details?id=org.telegram.messenger",
+                },
+            ]
+        }
+
+    def test_no_results_returns_empty_apps_list(self, monkeypatch):
+        monkeypatch.setattr(playstore_app_lookup, "fetch_apps_by_name", lambda query, country, lang_code: [])
+        result = playstore_app_lookup.get_playstore_app_id("nonsense")
+        assert result == {"apps": []}
+
+    def test_service_error_returns_error_dict(self, monkeypatch):
+        def raise_error(query, country, lang_code):
+            raise ToolError("'query' cannot be empty.")
+
+        monkeypatch.setattr(playstore_app_lookup, "fetch_apps_by_name", raise_error)
+
+        result = playstore_app_lookup.get_playstore_app_id("")
+        assert "error" in result
+
+
 class TestGetPlaystoreAppName:
     def test_success_shapes_app_id_name_and_url(self, monkeypatch):
         fake_app = {"trackId": "com.block.juggle", "name": "Block Blast!"}

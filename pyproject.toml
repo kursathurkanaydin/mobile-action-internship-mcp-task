@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "fastmcp==3.4.5",
+    "google-play-scraper>=1.2.7",
     "httpx==0.28.1",
     "python-dotenv==1.2.2",
     "redis==8.1.0",

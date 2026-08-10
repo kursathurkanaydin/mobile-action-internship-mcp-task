@@ -66,14 +66,23 @@ MobileAction's endpoints need a numeric `trackId` rather than an app name)
 
 **Google Play lookup** — unlike the App Store, Google has no free public
 search API and MobileAction has no name→id search endpoint either (confirmed
-in their docs), so there's no `get_playstore_app_id`. What these tools *do*
-support: pass either a bare package id (`com.facebook.katana`) or a full
-Play Store URL (e.g. the one you get from sharing an app,
-`https://play.google.com/store/apps/details?id=com.facebook.katana`) — the
-id is extracted automatically. **Redis-cached for 24h**, same as the keyword
-tools, since app details rarely change.
+in their docs). `get_playstore_app_name`/`_batch` accept either a bare
+package id (`com.facebook.katana`) or a full Play Store URL (e.g. the one you
+get from sharing an app, `https://play.google.com/store/apps/details?id=com.facebook.katana`)
+— the id is extracted automatically — and are **Redis-cached for 24h**, same
+as the keyword tools, since app details rarely change.
+
+`get_playstore_app_id` fills the search-by-name gap using the **unofficial**
+[`google-play-scraper`](https://pypi.org/project/google-play-scraper/) package
+(scrapes Play Store's search page — there's no official API to call instead).
+It's free but **not authoritative like `get_app_store_id`**: a known bug in
+that library drops the id for Google's special "top card" result on an
+exact-name match, so the single most obvious app can be missing from the
+results. Treat its output as candidates to confirm with `get_playstore_app_name`,
+not a trusted single answer. Not cached, since it's a live search.
 | Tool | Description | Credits/call |
 |---|---|---|
+| `get_playstore_app_id` | Search Google Play by name for candidate package ids. **Unofficial/best-effort** (see above). | Free (unofficial scraper) |
 | `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. | 5, 0 on a cache hit |
 | `get_playstore_app_names_batch` | Resolve multiple package ids to names in one request (flat cost regardless of count). | 1, 0 on a cache hit |
 
@@ -150,6 +159,9 @@ get_playstore_organic_impression_share
 get_playstore_share_of_category
   GET https://api.mobileaction.co/playstore-keyword-ranking/share-of-category/keyword/meditation/US
       ?token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_app_id                             (unofficial google-play-scraper, not MobileAction or Google)
+  scrapes https://play.google.com/store/search?q=WhatsApp&c=apps&hl=en&gl=us
 
 get_playstore_app_name                           (MobileAction, unlike the free iTunes lookup above)
   GET https://api.mobileaction.co/playstore-appinfo-v2/app/detailed/com.duolingo
@@ -250,6 +262,7 @@ versions in the matching `src/mcp_task/example_prompts_*.txt` file):
 
 **Google Play** ([`example_prompts_playstore.txt`](src/mcp_task/example_prompts_playstore.txt))
 
+- Search by name for a package id (unofficial/best-effort): *"Can you find Spotify's Play Store package id?"*
 - App lookup by package id: *"What app has the package id com.duolingo?"*
 - App lookup from a Play Store URL: *"What app is this? https://play.google.com/store/apps/details?id=com.block.juggle"*
 - Batch app name lookup: *"Can you show me the names of the apps with package ids com.duolingo and com.block.juggle?"*

@@ -108,6 +108,44 @@ class TestFetchAppByTrackId:
         assert result == cached_data
 
 
+class TestFetchAppsByName:
+    def test_empty_query_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(pas, "search_apps", _no_call)
+        with pytest.raises(ToolError, match="cannot be empty"):
+            pas.fetch_apps_by_name("")
+
+    def test_valid_input_delegates_with_expected_args(self, monkeypatch):
+        captured = {}
+        fake_apps = [{"appId": "com.whatsapp.w4b", "title": "WhatsApp Business"}]
+
+        def fake_search_apps(query, country, lang_code):
+            captured["query"] = query
+            captured["country"] = country
+            captured["lang_code"] = lang_code
+            return fake_apps
+
+        monkeypatch.setattr(pas, "search_apps", fake_search_apps)
+        result = pas.fetch_apps_by_name("WhatsApp", "tr", "tr")
+
+        assert captured == {"query": "WhatsApp", "country": "tr", "lang_code": "tr"}
+        assert result == fake_apps
+
+    def test_invalid_country_raises_before_any_request(self, monkeypatch):
+        monkeypatch.setattr(pas, "search_apps", _no_call)
+        with pytest.raises(ToolError):
+            pas.fetch_apps_by_name("WhatsApp", "usa")
+
+    def test_no_results_returns_empty_list_not_an_error(self, monkeypatch):
+        monkeypatch.setattr(pas, "search_apps", lambda query, country, lang_code: [])
+        assert pas.fetch_apps_by_name("nonsense") == []
+
+    def test_not_cached(self, monkeypatch):
+        # a live search, not a fixed id-keyed record — must never touch redis
+        monkeypatch.setattr(pas, "search_apps", lambda query, country, lang_code: [])
+        monkeypatch.setattr(cache, "redis_client", _UntouchableRedis())
+        pas.fetch_apps_by_name("WhatsApp")
+
+
 class TestFetchAppsByTrackIds:
     def test_empty_track_ids_raises_before_any_request(self, monkeypatch):
         monkeypatch.setattr(pas, "get", _no_call)

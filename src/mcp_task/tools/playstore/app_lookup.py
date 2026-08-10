@@ -1,6 +1,10 @@
 from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
-from mcp_task.services.playstore.app_service import fetch_app_by_track_id, fetch_apps_by_track_ids
+from mcp_task.services.playstore.app_service import (
+    fetch_app_by_track_id,
+    fetch_apps_by_name,
+    fetch_apps_by_track_ids,
+)
 
 
 def _app_url(track_id: str) -> str:
@@ -8,17 +12,50 @@ def _app_url(track_id: str) -> str:
 
 
 @mcp.tool
+def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en") -> dict:
+    """Search Google Play by app name for candidate package ids.
+
+    UNOFFICIAL AND BEST-EFFORT — Google has no public search API and
+    MobileAction has no Play Store name search either, so this scrapes Play
+    Store's search page via the unofficial google-play-scraper package. A
+    known bug in that library means the single most obvious match for an
+    exact app name can be missing from the results (Google renders it as a
+    special "top card" that the scraper fails to extract an id from) — if
+    the app you expect isn't in "apps", that's the likely reason, not that
+    it doesn't exist; try get_playstore_app_id again with a more distinctive
+    query, or ask the user for the app's Play Store link and use
+    get_playstore_app_name instead.
+
+    Treat "apps" as CANDIDATES to confirm by name — do not assume the first
+    result is the right one and feed it straight into other tools. This is
+    unlike get_app_store_id, which is backed by Apple's real search API and
+    can be trusted directly.
+
+    Args:
+        query: The app name (or approximate name) to search for, e.g. "WhatsApp".
+        country: Two-letter Play Store country code to search in, e.g. "us", "tr".
+        lang_code: Two-letter language code for the returned names, e.g. "en", "tr".
+    """
+    try:
+        apps = fetch_apps_by_name(query, country, lang_code)
+    except ToolError as exc:
+        return to_error_response(exc)
+
+    return {
+        "apps": [{"app_id": app["appId"], "name": app["title"], "url": _app_url(app["appId"])} for app in apps],
+    }
+
+
+@mcp.tool
 def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
     """Look up a Google Play app's name and details by its package id or Play Store URL.
 
-    There is no name-to-id search for Google Play (unlike get_app_store_id
-    for the App Store) — MobileAction only supports looking apps up by an
-    already-known package id, e.g. "com.facebook.katana". If the user gives
-    a Play Store link instead (e.g.
+    Use get_playstore_app_id first if you only have an app name and no
+    id/URL — that tool searches by name (unofficially, best-effort); this
+    one is the reliable, MobileAction-backed lookup once you have an id. If
+    the user gives a Play Store link instead of a bare id (e.g.
     "https://play.google.com/store/apps/details?id=com.facebook.katana"),
-    pass it straight through — the id is extracted automatically. If the user
-    only has an app name and no id/URL, ask them for the Play Store link
-    rather than guessing the package id.
+    pass it straight through — the id is extracted automatically.
 
     Args:
         track_id: The app's Google Play package id (e.g. "com.facebook.katana")
