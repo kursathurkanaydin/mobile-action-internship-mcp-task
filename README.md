@@ -228,23 +228,39 @@ Store for 2026-07-01."*
 
 ## Example prompts
 
-More prompts to try once connected (Turkish versions in
-[`src/mcp_task/example_prompts.txt`](src/mcp_task/example_prompts.txt)):
+More prompts to try once connected, one per tool, split by store (Turkish
+versions in the matching `src/mcp_task/example_prompts_*.txt` file):
+
+**App Store** ([`example_prompts_appstore.txt`](src/mcp_task/example_prompts_appstore.txt))
 
 - Credit check: *"How many credits do I have left on my MobileAction API key?"*
+- App search: *"Find Clash of Clans' App Store id."*
+- App name lookup: *"What app has track id 570060128?"*
+- Batch app name lookup: *"Can you show me the names of the apps with track ids 570060128, 389801252, and 284882215?"*
+- Keyword ranking: *"What's Clash of Clans' current ranking for the keyword 'strategy' on the US App Store?"*
 - Top keywords: *"Show me the keywords that bring Facebook the most search volume on the US App Store for 2026-07-01."*
 - Ranking history: *"How has Clash of Clans' ranking for the keyword 'strategy game' changed over the last 30 days on the US store?"*
-- Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US store?"*
 - Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US App Store?"*
 - Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US App Store?"*
 - Batch-resolve competitor names: *"Can you also show me the names of the apps that rank for 'meditation' on the US App Store?"*
 - Organic keywords (costs 50 credits, test carefully): *"Show me the keywords Duolingo organically ranks for on iPhone, for the date 2026-07-01."*
-- Reverse lookup: *"What app has track id 570060128?"*
 - Compare history: *"Can you compare Clash of Clans and Clash Royale's ranking history for the keyword 'strategy game' on the US App Store over the last 15 days?"*
 - Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
-- Google Play ranking: *"What rank does com.duolingo have for 'language learning' on the US Play Store?"*
-- Google Play impression share: *"What's the organic impression share for 'meditation' on Google Play in the US?"*
-- Google Play app lookup from a URL: *"What app is this? https://play.google.com/store/apps/details?id=com.block.juggle"*
+- Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US store?"*
+
+**Google Play** ([`example_prompts_playstore.txt`](src/mcp_task/example_prompts_playstore.txt))
+
+- App lookup by package id: *"What app has the package id com.duolingo?"*
+- App lookup from a Play Store URL: *"What app is this? https://play.google.com/store/apps/details?id=com.block.juggle"*
+- Batch app name lookup: *"Can you show me the names of the apps with package ids com.duolingo and com.block.juggle?"*
+- Keyword ranking: *"What rank does com.duolingo have for the keyword 'language learning' on the US Play Store?"*
+- Top keywords: *"Show me the keywords that bring com.duolingo the most search volume on the US Play Store for 2026-07-01."*
+- Ranking history: *"How has com.duolingo's ranking for the keyword 'language learning' changed over the last 30 days on the US Play Store?"*
+- Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US Play Store?"*
+- Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US Play Store?"*
+- Organic keywords (costs 50 credits, test carefully): *"Show me the keywords com.duolingo organically ranks for on the US Play Store, for the date 2026-07-01."*
+- Organic impression share: *"What's the organic impression share for 'meditation' split across competing apps on the US Play Store?"*
+- Share of category: *"What app categories does the keyword 'meditation' fall into on the US Play Store?"*
 
 ## Running the tests
 
