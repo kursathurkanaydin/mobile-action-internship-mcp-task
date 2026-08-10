@@ -2,7 +2,8 @@ from mcp_task.clients.google_play_scraper import search_apps
 from mcp_task.clients.mobileaction import MobileActionAPIError, get
 from mcp_task.config import BATCH_LOOKUP_MAX_IDS
 from mcp_task.services.cache import cached
-from mcp_task.validation import require_country_code, require_package_name, require_package_name_list, require_text
+from mcp_task.validation.common import require_country_code, require_text
+from mcp_task.validation.playstore import require_package_name, require_package_name_list
 
 # Unlike the App Store (Apple's free, authoritative iTunes API supports
 # search-by-name), MobileAction has no Google Play endpoint to search by app

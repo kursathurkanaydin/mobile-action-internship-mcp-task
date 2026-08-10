@@ -1,13 +1,13 @@
 from mcp_task.clients.mobileaction import get
 from mcp_task.services.cache import cached
-from mcp_task.validation import (
+from mcp_task.validation.common import (
     require_country_code,
     require_date,
     require_date_range,
-    require_package_name,
     require_positive_int,
     require_text,
 )
+from mcp_task.validation.playstore import require_package_name
 
 
 def fetch_keyword_ranking(track_id: str, country_code: str, keywords: str, date: str | None) -> dict:

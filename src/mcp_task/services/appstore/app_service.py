@@ -1,6 +1,7 @@
 from mcp_task.clients.itunes import lookup_app, lookup_apps, search_app
 from mcp_task.config import BATCH_LOOKUP_MAX_IDS
-from mcp_task.validation import require_country_code, require_text, require_track_id, require_track_id_list
+from mcp_task.validation.appstore import require_track_id, require_track_id_list
+from mcp_task.validation.common import require_country_code, require_text
 
 
 def fetch_app_by_name(app_name: str, country: str) -> dict:

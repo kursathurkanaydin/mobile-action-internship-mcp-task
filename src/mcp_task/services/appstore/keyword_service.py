@@ -1,13 +1,12 @@
 from mcp_task.clients.mobileaction import get
 from mcp_task.services.cache import cached
-from mcp_task.validation import (
+from mcp_task.validation.appstore import require_device, require_track_id
+from mcp_task.validation.common import (
     require_country_code,
     require_date,
     require_date_range,
-    require_device,
     require_positive_int,
     require_text,
-    require_track_id,
 )
 
 
@@ -33,7 +32,7 @@ def fetch_keyword_ranking(track_id: int, country_code: str, keywords: str, date:
     if date is None:
         return fetch()
 
-    cache_key = f"mcp:keyword_ranking:{track_id}:{country_code}:{keywords}:{date}"
+    cache_key = f"mcp:appstore:keyword_ranking:{track_id}:{country_code}:{keywords}:{date}"
     return cached(cache_key, fetch)
 
 
@@ -47,7 +46,7 @@ def fetch_top_keywords(
     device = require_device(device, required=False)
     limit = require_positive_int(limit, "limit")
 
-    cache_key = f"mcp:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
+    cache_key = f"mcp:appstore:top_keywords:{track_id}:{country_code}:{date}:{device or 'all'}:{limit or 'default'}"
     return cached(
         cache_key,
         lambda: get(
@@ -78,7 +77,7 @@ def fetch_keyword_ranking_history(
     keyword = require_text(keyword, "keyword")
     require_date_range(start_date, end_date, max_days=30)
 
-    cache_key = f"mcp:keyword_ranking_history:{track_id}:{country_code}:{keyword}:{start_date}:{end_date}"
+    cache_key = f"mcp:appstore:keyword_ranking_history:{track_id}:{country_code}:{keyword}:{start_date}:{end_date}"
     return cached(
         cache_key,
         lambda: get(
@@ -93,7 +92,7 @@ def fetch_keyword_metadata(country_code: str, keyword: str) -> dict:
     country_code = require_country_code(country_code)
     keyword = require_text(keyword, "keyword")
 
-    cache_key = f"mcp:keyword_metadata:{country_code}:{keyword}"
+    cache_key = f"mcp:appstore:keyword_metadata:{country_code}:{keyword}"
     return cached(
         cache_key,
         lambda: get(
@@ -108,7 +107,7 @@ def fetch_apps_for_keyword(country_code: str, keyword: str) -> dict:
     country_code = require_country_code(country_code)
     keyword = require_text(keyword, "keyword")
 
-    cache_key = f"mcp:apps_for_keyword:{country_code}:{keyword}"
+    cache_key = f"mcp:appstore:apps_for_keyword:{country_code}:{keyword}"
     return cached(
         cache_key,
         lambda: get(
@@ -132,7 +131,7 @@ def fetch_organic_keywords(track_id: int, country_code: str, device: str, date: 
     date = require_date(date, "date")
     require_positive_int(limit, "limit")
 
-    cache_key = f"mcp:organic_keywords:{track_id}:{country_code}:{device}:{date}"
+    cache_key = f"mcp:appstore:organic_keywords:{track_id}:{country_code}:{device}:{date}"
     return cached(
         cache_key,
         lambda: get(

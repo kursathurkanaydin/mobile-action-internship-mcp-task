@@ -77,10 +77,10 @@ class TestFetchKeywordRanking:
         assert captured["params"] == {"keywords": "strategy", "date": "2026-07-01"}
         assert result == fake_data
         assert len(fake_redis.set_calls) == 1
-        assert fake_redis.set_calls[0][0] == "mcp:keyword_ranking:529479190:US:strategy:2026-07-01"
+        assert fake_redis.set_calls[0][0] == "mcp:appstore:keyword_ranking:529479190:US:strategy:2026-07-01"
 
     def test_with_a_date_cache_hit_skips_the_client(self, monkeypatch):
-        cache_key = "mcp:keyword_ranking:529479190:US:strategy:2026-07-01"
+        cache_key = "mcp:appstore:keyword_ranking:529479190:US:strategy:2026-07-01"
         cached_data = [{"keyword": "strategy", "rank": 5}]
         monkeypatch.setattr(ks, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))
@@ -123,12 +123,12 @@ class TestFetchTopKeywords:
 
         assert len(fake_redis.set_calls) == 1
         cache_key, cached_json, ttl = fake_redis.set_calls[0]
-        assert cache_key == "mcp:top_keywords:529479190:US:2026-07-01:IPHONE:50"
+        assert cache_key == "mcp:appstore:top_keywords:529479190:US:2026-07-01:IPHONE:50"
         assert json.loads(cached_json) == fake_data
         assert ttl == cache.CACHE_TTL_SECONDS
 
     def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:top_keywords:529479190:US:2026-07-01:all:default"
+        cache_key = "mcp:appstore:top_keywords:529479190:US:2026-07-01:all:default"
         cached_data = [{"keyword": "game", "searchVolume": 100, "rank": 3}]
         fake_redis = _FakeRedis(existing={cache_key: json.dumps(cached_data)})
 
@@ -181,10 +181,10 @@ class TestFetchKeywordRankingHistory:
         assert captured["params"] == {"startDate": "2026-07-01", "endDate": "2026-07-01"}
         assert result == fake_history
         assert len(fake_redis.set_calls) == 1
-        assert fake_redis.set_calls[0][0] == "mcp:keyword_ranking_history:529479190:US:strategy:2026-07-01:2026-07-01"
+        assert fake_redis.set_calls[0][0] == "mcp:appstore:keyword_ranking_history:529479190:US:strategy:2026-07-01:2026-07-01"
 
     def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:keyword_ranking_history:529479190:US:strategy:2026-07-01:2026-07-01"
+        cache_key = "mcp:appstore:keyword_ranking_history:529479190:US:strategy:2026-07-01:2026-07-01"
         cached_data = [{"date": "2026-07-01T00:00:00", "rank": 10, "appKind": "IPHONE"}]
         monkeypatch.setattr(ks, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))
@@ -218,10 +218,10 @@ class TestFetchKeywordMetadata:
         assert captured["path"] == "/appstore-keyword-ranking/US/keyword-metadata"
         assert captured["params"] == {"keyword": "meditation"}
         assert result == fake_data
-        assert fake_redis.set_calls[0][0] == "mcp:keyword_metadata:US:meditation"
+        assert fake_redis.set_calls[0][0] == "mcp:appstore:keyword_metadata:US:meditation"
 
     def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:keyword_metadata:US:meditation"
+        cache_key = "mcp:appstore:keyword_metadata:US:meditation"
         cached_data = {"searchVolume": 500, "popularity": 80}
         monkeypatch.setattr(ks, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))
@@ -255,10 +255,10 @@ class TestFetchAppsForKeyword:
         assert captured["path"] == "/appstore-keyword-ranking/US/keyword-apps"
         assert captured["params"] == {"keyword": "meditation"}
         assert result == fake_data
-        assert fake_redis.set_calls[0][0] == "mcp:apps_for_keyword:US:meditation"
+        assert fake_redis.set_calls[0][0] == "mcp:appstore:apps_for_keyword:US:meditation"
 
     def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:apps_for_keyword:US:meditation"
+        cache_key = "mcp:appstore:apps_for_keyword:US:meditation"
         cached_data = [{"trackId": 1}, {"trackId": 2}]
         monkeypatch.setattr(ks, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))
@@ -292,7 +292,7 @@ class TestFetchOrganicKeywords:
         assert captured["path"] == "/appstore-keyword-ranking/529479190/US/IPHONE/organic-keywords"
         assert captured["params"] == {"date": "2026-07-01"}
         assert result == fake_data
-        assert fake_redis.set_calls[0][0] == "mcp:organic_keywords:529479190:US:IPHONE:2026-07-01"
+        assert fake_redis.set_calls[0][0] == "mcp:appstore:organic_keywords:529479190:US:IPHONE:2026-07-01"
 
     def test_cache_key_does_not_depend_on_limit(self, monkeypatch):
         # limit only affects client-side capping in the tool layer, not the
@@ -308,7 +308,7 @@ class TestFetchOrganicKeywords:
         assert len(fake_redis.get_calls) == 2
 
     def test_cache_hit_returns_cached_data_without_calling_the_client(self, monkeypatch):
-        cache_key = "mcp:organic_keywords:529479190:US:IPHONE:2026-07-01"
+        cache_key = "mcp:appstore:organic_keywords:529479190:US:IPHONE:2026-07-01"
         cached_data = {"rankings": [{"keyword": "clan", "rank": 1}]}
         monkeypatch.setattr(ks, "get", _no_call)
         monkeypatch.setattr(cache, "redis_client", _FakeRedis(existing={cache_key: json.dumps(cached_data)}))

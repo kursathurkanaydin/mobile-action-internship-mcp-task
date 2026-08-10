@@ -6,7 +6,7 @@ from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_track_id
 from mcp_task.services.appstore.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
-from mcp_task.validation import require_track_id_list
+from mcp_task.validation.appstore import require_track_id_list
 
 
 def _resolve_app_label(track_id: int, country_code: str) -> str:

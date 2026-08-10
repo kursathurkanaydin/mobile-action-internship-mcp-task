@@ -288,11 +288,15 @@ credits.
 
 ```
 src/mcp_task/
-  clients/     raw HTTP clients (MobileAction, iTunes)
+  clients/     raw HTTP clients (MobileAction, iTunes, unofficial Play scraper)
   services/    validation + fetch logic, reusable across tools
     appstore/    keyword_service.py, app_service.py (iTunes-backed)
     playstore/   keyword_service.py, app_service.py
     cache.py     shared Redis-caching helper (both stores' MobileAction fetches)
+  validation/  input validation, split the same way as services/
+    common.py    shared validators (country_code, text, date, date_range, positive_int)
+    appstore.py  App Store-only (numeric track_id, device, track_id_list)
+    playstore.py Play Store-only (package_name, package_name_list)
   charting/    HTML/Chart.js dashboard rendering — generic, reused by any store's chart tools
   tools/       the @mcp.tool definitions themselves
     appstore/    keyword_services.py, app_lookup.py, charts.py
@@ -302,11 +306,50 @@ src/mcp_task/
 
 Each store is its own subpackage rather than one growing module or a pile of
 prefixed files — `services/appstore/` and `services/playstore/` mirror each
-other module-for-module, same for `tools/`. `charts.py` lives under
-`tools/appstore/` because its three tools are entirely App Store-backed today;
-a future Play Store chart tool would be `tools/playstore/charts.py`, reusing
-the same store-agnostic `charting/` rendering package. New tool files (or a
-whole new store subpackage) are picked up automatically: `mcp_instance.py`
-recursively walks `tools/` at startup (`pkgutil.walk_packages`, not the
-non-recursive `iter_modules` — subpackages need the recursive version)
-instead of hand-listing imports, so nothing needs to be wired in by hand.
+other module-for-module, same for `tools/` and `validation/`. `charts.py`
+lives under `tools/appstore/` because its three tools are entirely App
+Store-backed today; a future Play Store chart tool would be
+`tools/playstore/charts.py`, reusing the same store-agnostic `charting/`
+rendering package. New tool files (or a whole new store subpackage) are
+picked up automatically: `mcp_instance.py` recursively walks `tools/` at
+startup (`pkgutil.walk_packages`, not the non-recursive `iter_modules` —
+subpackages need the recursive version) instead of hand-listing imports, so
+nothing needs to be wired in by hand.
+
+Redis cache keys follow the same split: App Store keys are
+`mcp:appstore:<thing>:...`, Play Store keys are `mcp:playstore:<thing>:...` —
+always prefix a new cache key with its store name so keys stay
+distinguishable at a glance (e.g. in `redis-cli KEYS 'mcp:*'`).
+
+## Adding a new tool
+
+Follow the same three-layer path every existing tool takes:
+
+1. **Client** (`clients/`) — only if you need a new external API. If it's
+   another MobileAction endpoint, reuse `clients/mobileaction.py`'s `get()`
+   rather than writing a new HTTP call.
+2. **Service** (`services/<store>/`) — validate inputs (reuse a validator
+   from `validation/common.py` or `validation/<store>.py`, or add a new one
+   there if the input shape is new) and call the client function. Wrap the
+   call in `services/cache.py`'s `cached()` if the response is safe to cache
+   — i.e. the inputs pin down a concrete/historical result, not "whatever is
+   most recent right now."
+3. **Tool** (`tools/<store>/`) — a thin `@mcp.tool` function: call the
+   service, catch `ToolError` and return `to_error_response(exc)`, otherwise
+   shape the service's return value into the tool's response dict. Nothing
+   else to wire up — `mcp_instance.py` finds it automatically at startup.
+
+Then mirror the same `<store>/` path under `tests/` for each layer you
+touched, and add a row to the relevant credits table + an entry in
+`example_prompts_<store>.txt` in this README.
+
+Not store-specific (like `tools/account.py` or `services/cache.py`)? Put it
+at the top level of `services/`/`tools/` instead of under a store folder.
+
+Adding a whole new store? Create `services/<newstore>/` and
+`tools/<newstore>/`, each with an (empty) `__init__.py` — auto-discovery
+picks it up with nothing else to configure. If you mirror it under `tests/`
+too, the `__init__.py` already present at `tests/services/` and
+`tests/tools/` is what stops pytest from colliding two identically-named
+leaf packages (e.g. two different `appstore/` directories) during test
+collection — don't remove those.
