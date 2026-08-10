@@ -16,6 +16,14 @@ class FakeResponse:
             raise ValueError("no json body")
         return self._json_data
 
+    @property
+    def content(self):
+        # Non-empty whenever a json body was set (even {} or []) or there's
+        # raw text; empty only when neither was given, mimicking a real 204.
+        if self._json_data is not None:
+            return b"{}"
+        return self.text.encode()
+
     def raise_for_status(self):
         if self.status_code >= 400:
             request = httpx.Request("GET", "https://example.test")

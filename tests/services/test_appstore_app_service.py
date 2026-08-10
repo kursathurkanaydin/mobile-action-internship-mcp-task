@@ -2,7 +2,7 @@ import pytest
 
 from mcp_task.config import BATCH_LOOKUP_MAX_IDS
 from mcp_task.errors import ToolError
-from mcp_task.services import app_service
+from mcp_task.services import appstore_app_service as app_service
 
 
 def _no_call(*args, **kwargs):

@@ -56,13 +56,26 @@ the same way.
 | `get_playstore_top_keywords` | Keywords bringing an app the most search volume. | 20, 0 on a cache hit |
 | `get_playstore_organic_keywords` | Full list of keywords an app organically ranks for. | **50**, 0 on a cache hit |
 
-**App lookup** (helper — calls Apple's free iTunes API, not MobileAction, since
+**App Store lookup** (helper — calls Apple's free iTunes API, not MobileAction, since
 MobileAction's endpoints need a numeric `trackId` rather than an app name)
 | Tool | Description | Credits/call |
 |---|---|---|
 | `get_app_store_id` | Resolve an app name to its numeric App Store id. | Free (external API) |
 | `get_app_name` | Resolve a numeric App Store id back to its name. | Free (external API) |
 | `get_app_names_batch` | Resolve 1–300 numeric App Store ids to names in one request (limit configurable via `BATCH_LOOKUP_MAX_IDS`; e.g. the competitor trackIds from `get_apps_for_keyword`) instead of one call per id. | Free (external API) |
+
+**Google Play lookup** — unlike the App Store, Google has no free public
+search API and MobileAction has no name→id search endpoint either (confirmed
+in their docs), so there's no `get_playstore_app_id`. What these tools *do*
+support: pass either a bare package id (`com.facebook.katana`) or a full
+Play Store URL (e.g. the one you get from sharing an app,
+`https://play.google.com/store/apps/details?id=com.facebook.katana`) — the
+id is extracted automatically. **Redis-cached for 24h**, same as the keyword
+tools, since app details rarely change.
+| Tool | Description | Credits/call |
+|---|---|---|
+| `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. | 5, 0 on a cache hit |
+| `get_playstore_app_names_batch` | Resolve multiple package ids to names in one request (flat cost regardless of count). | 1, 0 on a cache hit |
 
 **Interactive charts** (bonus — render the keyword data above as a
 self-contained HTML page with a live Chart.js chart, instead of raw JSON).
@@ -137,6 +150,14 @@ get_playstore_organic_impression_share
 get_playstore_share_of_category
   GET https://api.mobileaction.co/playstore-keyword-ranking/share-of-category/keyword/meditation/US
       ?token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_app_name                           (MobileAction, unlike the free iTunes lookup above)
+  GET https://api.mobileaction.co/playstore-appinfo-v2/app/detailed/com.duolingo
+      ?langCode=en&token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_app_names_batch                    (MobileAction, unlike the free iTunes lookup above)
+  GET https://api.mobileaction.co/playstore-appinfo-v2/app/simple/en
+      ?trackIds=com.duolingo,com.facebook.katana&token=YOUR_MOBILEACTION_API_KEY
 ```
 
 ## Setup
@@ -223,6 +244,7 @@ More prompts to try once connected (Turkish versions in
 - Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
 - Google Play ranking: *"What rank does com.duolingo have for 'language learning' on the US Play Store?"*
 - Google Play impression share: *"What's the organic impression share for 'meditation' on Google Play in the US?"*
+- Google Play app lookup from a URL: *"What app is this? https://play.google.com/store/apps/details?id=com.block.juggle"*
 
 ## Running the tests
 
@@ -246,8 +268,14 @@ src/mcp_task/
 Files are grouped by store, not lumped into one growing module: App Store
 keyword logic lives in `services/appstore_keyword_service.py` /
 `tools/appstore_keyword_services.py`, Google Play's in
-`services/playstore_keyword_service.py` / `tools/playstore_keyword_services.py`,
-sharing `services/cache.py` for the Redis-caching behavior both use. New tool
-modules under `tools/` are picked up automatically — `mcp_instance.py` walks
-that package at startup instead of hand-listing imports, so adding a new
+`services/playstore_keyword_service.py` / `tools/playstore_keyword_services.py`
+(plus `playstore_app_service.py` / `playstore_app_lookup.py` for app-id
+lookups, alongside the App Store's iTunes-backed `appstore_app_service.py` /
+`appstore_app_lookup.py`). Every MobileAction-backed fetch — both stores'
+keyword services and the Play Store app lookup — shares `services/cache.py`
+for identical Redis-caching behavior; the App Store's `appstore_app_service.py`
+calls Apple's free iTunes API instead and isn't cached. New tool modules under
+`tools/` are picked up automatically —
+`mcp_instance.py` walks that package at startup instead of hand-listing
+imports, so adding a new
 store or tool file doesn't require touching it.

@@ -36,6 +36,12 @@ class TestGetSuccess:
 
         assert captured["params"]["token"] == mobileaction.MOBILEACTION_API_KEY
 
+    def test_empty_body_returns_none_instead_of_raising(self, monkeypatch, fake_response):
+        # e.g. the Google Play app-detail endpoint returns 204 with no body
+        # for an unrecognized package id, rather than a 404.
+        monkeypatch.setattr(mobileaction.httpx, "get", lambda *a, **k: fake_response(204))
+        assert mobileaction.get("/path") is None
+
 
 class TestGetHttpErrors:
     @pytest.mark.parametrize(

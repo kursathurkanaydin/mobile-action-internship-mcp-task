@@ -19,12 +19,15 @@ class MobileActionAPIError(ToolError):
     """A clean, user-facing error for any failure talking to the MobileAction API."""
 
 
-def get(path: str, params: dict | None = None) -> dict | list:
+def get(path: str, params: dict | None = None) -> dict | list | None:
     """Make an authenticated GET request to the MobileAction API.
 
     Appends the API token, logs the credit cost/remaining from response headers,
     and raises MobileActionAPIError with a clean message on any failure (network
     error or non-2xx response) instead of letting a raw exception propagate.
+    Returns None for a 2xx response with an empty body (e.g. the Google Play
+    app-detail endpoint returns 204 for an unrecognized package id) rather
+    than crashing on response.json() with nothing to parse.
     """
     url = f"{MOBILEACTION_BASE_URL}{path}"
     request_params = {k: v for k, v in (params or {}).items() if v is not None}
@@ -50,5 +53,8 @@ def get(path: str, params: dict | None = None) -> dict | list:
         except ValueError:
             detail = response.text
         raise MobileActionAPIError(f"{message} Details: {detail}", status_code=response.status_code)
+
+    if not response.content:
+        return None
 
     return response.json()
