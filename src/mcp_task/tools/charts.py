@@ -4,8 +4,8 @@ from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ra
 from mcp_task.charting.server import publish_html
 from mcp_task.errors import ToolError
 from mcp_task.mcp_instance import mcp
-from mcp_task.services.appstore_app_service import fetch_app_by_track_id
-from mcp_task.services.appstore_keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
+from mcp_task.services.appstore.app_service import fetch_app_by_track_id
+from mcp_task.services.appstore.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
 from mcp_task.validation import require_track_id_list
 
 

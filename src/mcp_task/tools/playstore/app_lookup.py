@@ -1,6 +1,6 @@
 from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
-from mcp_task.services.playstore_app_service import fetch_app_by_track_id, fetch_apps_by_track_ids
+from mcp_task.services.playstore.app_service import fetch_app_by_track_id, fetch_apps_by_track_ids
 
 
 def _app_url(track_id: str) -> str:

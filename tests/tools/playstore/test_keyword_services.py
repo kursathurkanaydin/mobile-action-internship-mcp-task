@@ -1,5 +1,5 @@
 from mcp_task.errors import ToolError
-from mcp_task.tools import playstore_keyword_services as ks
+from mcp_task.tools.playstore import keyword_services as ks
 
 
 class TestGetPlaystoreKeywordRanking:

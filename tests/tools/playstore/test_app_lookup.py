@@ -1,5 +1,5 @@
 from mcp_task.errors import ToolError
-from mcp_task.tools import playstore_app_lookup
+from mcp_task.tools.playstore import app_lookup as playstore_app_lookup
 
 
 class TestGetPlaystoreAppName:

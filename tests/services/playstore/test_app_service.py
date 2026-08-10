@@ -6,7 +6,7 @@ from redis.exceptions import RedisError
 from mcp_task.clients.mobileaction import MobileActionAPIError
 from mcp_task.errors import ToolError
 from mcp_task.services import cache
-from mcp_task.services import playstore_app_service as pas
+from mcp_task.services.playstore import app_service as pas
 
 
 def _no_call(*args, **kwargs):

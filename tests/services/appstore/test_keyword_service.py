@@ -5,7 +5,7 @@ from redis.exceptions import RedisError
 
 from mcp_task.errors import ToolError
 from mcp_task.services import cache
-from mcp_task.services import appstore_keyword_service as ks
+from mcp_task.services.appstore import keyword_service as ks
 
 
 def _no_call(*args, **kwargs):

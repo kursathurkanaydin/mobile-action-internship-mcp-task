@@ -1,6 +1,6 @@
 from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
-from mcp_task.services.playstore_keyword_service import (
+from mcp_task.services.playstore.keyword_service import (
     fetch_apps_for_keyword,
     fetch_keyword_metadata,
     fetch_keyword_ranking,
@@ -11,7 +11,7 @@ from mcp_task.services.playstore_keyword_service import (
     fetch_top_keywords,
 )
 
-# Same rationale as get_organic_keywords in appstore_keyword_services.py: large
+# Same rationale as get_organic_keywords in tools/appstore/keyword_services.py: large
 # apps can organically rank for tens of thousands of keywords, which can
 # exceed MCP's 1MB tool-result limit, so the response is always capped and
 # sorted by best rank first.

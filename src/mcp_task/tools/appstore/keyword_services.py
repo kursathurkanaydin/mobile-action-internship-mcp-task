@@ -1,6 +1,6 @@
 from mcp_task.errors import ToolError, to_error_response
 from mcp_task.mcp_instance import mcp
-from mcp_task.services.appstore_keyword_service import (
+from mcp_task.services.appstore.keyword_service import (
     fetch_apps_for_keyword,
     fetch_keyword_metadata,
     fetch_keyword_ranking,

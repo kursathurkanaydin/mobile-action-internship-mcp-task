@@ -277,21 +277,20 @@ credits.
 src/mcp_task/
   clients/     raw HTTP clients (MobileAction, iTunes)
   services/    validation + fetch logic, reusable across tools
+    appstore/    keyword_service.py, app_service.py (iTunes-backed)
+    playstore/   keyword_service.py, app_service.py
+    cache.py     shared Redis-caching helper (both stores' MobileAction fetches)
   charting/    HTML/Chart.js dashboard rendering
   tools/       the @mcp.tool definitions themselves
+    appstore/    keyword_services.py, app_lookup.py
+    playstore/   keyword_services.py, app_lookup.py
+    account.py, charts.py   (not store-specific, stay top-level)
 ```
 
-Files are grouped by store, not lumped into one growing module: App Store
-keyword logic lives in `services/appstore_keyword_service.py` /
-`tools/appstore_keyword_services.py`, Google Play's in
-`services/playstore_keyword_service.py` / `tools/playstore_keyword_services.py`
-(plus `playstore_app_service.py` / `playstore_app_lookup.py` for app-id
-lookups, alongside the App Store's iTunes-backed `appstore_app_service.py` /
-`appstore_app_lookup.py`). Every MobileAction-backed fetch — both stores'
-keyword services and the Play Store app lookup — shares `services/cache.py`
-for identical Redis-caching behavior; the App Store's `appstore_app_service.py`
-calls Apple's free iTunes API instead and isn't cached. New tool modules under
-`tools/` are picked up automatically —
-`mcp_instance.py` walks that package at startup instead of hand-listing
-imports, so adding a new
-store or tool file doesn't require touching it.
+Each store is its own subpackage rather than one growing module or a pile of
+prefixed files — `services/appstore/` and `services/playstore/` mirror each
+other module-for-module, same for `tools/`. New tool files (or a whole new
+store subpackage) are picked up automatically: `mcp_instance.py` recursively
+walks `tools/` at startup (`pkgutil.walk_packages`, not the non-recursive
+`iter_modules` — subpackages need the recursive version) instead of
+hand-listing imports, so nothing needs to be wired in by hand.

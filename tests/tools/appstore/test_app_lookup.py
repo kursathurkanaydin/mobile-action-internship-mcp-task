@@ -1,5 +1,5 @@
 from mcp_task.errors import ToolError
-from mcp_task.tools import appstore_app_lookup as app_lookup
+from mcp_task.tools.appstore import app_lookup
 
 
 class TestGetAppStoreId:
