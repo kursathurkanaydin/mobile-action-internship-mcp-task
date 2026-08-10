@@ -170,6 +170,23 @@ Restart Claude Desktop, then ask it something like *"What's my MobileAction
 credit balance?"* or *"Show me the top keywords for Duolingo on the US App
 Store for 2026-07-01."*
 
+## Example prompts
+
+More prompts to try once connected (Turkish versions in
+[`src/mcp_task/example_prompts.txt`](src/mcp_task/example_prompts.txt)):
+
+- Credit check: *"How many credits do I have left on my MobileAction API key?"*
+- Top keywords: *"Show me the keywords that bring Facebook the most search volume on the US App Store for 2026-07-01."*
+- Ranking history: *"How has Clash of Clans' ranking for the keyword 'strategy game' changed over the last 30 days on the US store?"*
+- Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US store?"*
+- Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US App Store?"*
+- Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US App Store?"*
+- Batch-resolve competitor names: *"Can you also show me the names of the apps that rank for 'meditation' on the US App Store?"*
+- Organic keywords (costs 50 credits, test carefully): *"Show me the keywords Duolingo organically ranks for on iPhone, for the date 2026-07-01."*
+- Reverse lookup: *"What app has track id 570060128?"*
+- Compare history: *"Can you compare Clash of Clans and Clash Royale's ranking history for the keyword 'strategy game' on the US App Store over the last 15 days?"*
+- Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
+
 ## Running the tests
 
 ```bash
