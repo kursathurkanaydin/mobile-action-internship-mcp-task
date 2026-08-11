@@ -247,14 +247,14 @@ def plot_compare_appstore_keyword_ranking_history(
     history and renders the comparison chart + dashboard in one step, which
     those single-app tools cannot do.
 
-    Fetches each app's ranking history, collapses iPhone/iPad to a single best
-    rank per day (comparing multiple apps' devices at once gets too busy), and
-    renders a dashboard: an interactive line chart (toggle apps via the legend,
-    hover a point for its exact date/rank) plus a per-app stat card and summary
-    table (best/worst/average rank, current trend). The date range should not
-    exceed 30 days per request; between 2 and 5 apps are supported (each app
-    costs a separate MobileAction API request, so this is capped to limit
-    credit usage per call).
+    Fetches each app's ranking history and renders a dashboard: an interactive
+    line chart (toggle apps via the legend, hover a point for its exact
+    date/rank) plus a per-app stat card and summary table (best/worst/average
+    rank, current trend) — with a device toggle button to switch the whole
+    dashboard between iPhone and iPad ranks, same as the single-app history
+    chart. The date range should not exceed 30 days per request; between 2
+    and 5 apps are supported (each app costs a separate MobileAction API
+    request, so this is capped to limit credit usage per call).
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
     that opens the dashboard in a browser.
