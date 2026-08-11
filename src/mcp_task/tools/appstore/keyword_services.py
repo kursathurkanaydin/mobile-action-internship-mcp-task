@@ -5,6 +5,7 @@ from mcp_task.services.appstore.keyword_service import (
     fetch_keyword_metadata,
     fetch_keyword_ranking,
     fetch_keyword_ranking_history,
+    fetch_keyword_ranking_history_multi,
     fetch_organic_keywords,
     fetch_top_keywords,
 )
@@ -99,6 +100,10 @@ def get_appstore_keyword_ranking_history(
     compare_appstore_keyword_ranking_history instead; it fetches every app's history
     itself in one call and renders the comparison, which this tool cannot do.
 
+    Do NOT call this once per keyword to cover multiple keywords for the SAME
+    app either — use get_appstore_keyword_ranking_history_multi instead; it
+    fetches every keyword's history itself in one call.
+
     The date range should not exceed 30 days per request.
 
     AFTER presenting this data to the user, offer to visualize it: ask
@@ -116,6 +121,44 @@ def get_appstore_keyword_ranking_history(
     """
     data = fetch_keyword_ranking_history(track_id, country_code, keyword, start_date, end_date)
     return {"history": data}
+
+
+@mcp.tool
+@with_credit_usage
+@handle_tool_errors
+def get_appstore_keyword_ranking_history_multi(
+    track_id: int,
+    country_code: str,
+    keywords: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Get ONE app's RAW App Store ranking history for MULTIPLE keywords over a date range.
+
+    Same as get_appstore_keyword_ranking_history, but for two or more
+    keywords at once — e.g. "how has app X ranked for 'clan', 'war', and
+    'strategy' over the last 30 days" (as opposed to one keyword, which is
+    get_appstore_keyword_ranking_history's job). Returns one rank entry per
+    day, per device (iPhone/iPad), per keyword, as plain data — no chart.
+
+    Call this ONCE with all the keywords comma-separated — do not call
+    get_appstore_keyword_ranking_history once per keyword and combine the
+    results yourself; each keyword still costs a separate MobileAction
+    request (the history endpoint has no batch-keyword mode), but this tool
+    does that fetching itself in one call, which
+    plot_appstore_keyword_ranking_history_multi also relies on to draw the
+    chart. The date range should not exceed 30 days per request; up to 10
+    keywords are supported.
+
+    Args:
+        track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).
+        country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
+        keywords: Two or more keywords, comma-separated (e.g. "clan,war,strategy").
+        start_date: History start date, inclusive, in YYYY-MM-DD format.
+        end_date: History end date, inclusive, in YYYY-MM-DD format.
+    """
+    data = fetch_keyword_ranking_history_multi(track_id, country_code, keywords, start_date, end_date)
+    return {"history_by_keyword": data}
 
 
 @mcp.tool

@@ -39,6 +39,7 @@ own `credit_cost`/`credit_remaining` live, not just this static table — see
 | `get_appstore_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
 | `get_appstore_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
 | `get_appstore_keyword_ranking_history` | Rank history for one keyword for an app over a date range. **Redis-cached for 24h** (bonus). | 10, 0 on a cache hit |
+| `get_appstore_keyword_ranking_history_multi` | Rank history for one or more keywords for one app over a date range, in one call. | 10 × number of keywords (one history call per keyword) |
 | `get_appstore_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
 | `get_appstore_organic_keywords` | Full list of keywords an app organically ranks for. **Redis-cached for 24h** (bonus). | **50**, 0 on a cache hit |
 
@@ -116,6 +117,7 @@ for rendering.
 |---|---|---|
 | `plot_appstore_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_appstore_keyword_ranking`) |
 | `plot_appstore_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_appstore_keyword_ranking_history`) |
+| `plot_appstore_keyword_ranking_history_multi` | Line chart comparing one app's rank across 2–10 keywords over time. iPhone/iPad ranks are pre-merged — no device toggle. | 10 × number of keywords (one history call per keyword) |
 | `compare_appstore_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
 | `plot_playstore_keyword_ranking_history` | Line chart of one Google Play app's rank over time, one keyword. No device toggle (Play Store has no iPhone/iPad split). | 10 (same as `get_playstore_keyword_ranking_history`) |
 | `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
@@ -130,7 +132,9 @@ a single app/keyword (`plot_appstore_keyword_ranking`, `plot_appstore_keyword_ra
 hit the exact same endpoints as `get_appstore_keyword_ranking` /
 `get_appstore_keyword_ranking_history` below — they just render the response as a
 chart instead of returning it raw; `compare_appstore_keyword_ranking_history` calls
-the `get_appstore_keyword_ranking_history` endpoint once per app being compared.
+the `get_appstore_keyword_ranking_history` endpoint once per app being compared,
+and `get_appstore_keyword_ranking_history_multi`/`plot_appstore_keyword_ranking_history_multi`
+call it once per keyword for the same app.
 
 ```
 get_remaining_api_credits
@@ -144,8 +148,14 @@ get_appstore_top_keywords
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/top-keywords
       ?date=2026-07-01&token=YOUR_MOBILEACTION_API_KEY
 
-get_appstore_keyword_ranking_history
+get_appstore_keyword_ranking_history            (and plot_appstore_keyword_ranking_history — same call)
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/strategy/keywordrankings
+      ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_MOBILEACTION_API_KEY
+
+get_appstore_keyword_ranking_history_multi      (and plot_appstore_keyword_ranking_history_multi — same call, once per keyword)
+  GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/clan/keywordrankings
+      ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_MOBILEACTION_API_KEY
+  GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/war/keywordrankings
       ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_MOBILEACTION_API_KEY
 
 get_appstore_keyword_metadata
@@ -301,6 +311,8 @@ versions in the matching `example_prompts.txt` file):
 - Keyword ranking: *"What's Clash of Clans' current ranking for the keyword 'strategy' on the US App Store?"*
 - Top keywords: *"Show me the keywords that bring Facebook the most search volume on the US App Store for 2026-07-01."*
 - Ranking history: *"How has Clash of Clans' ranking for the keyword 'strategy game' changed over the last 30 days on the US App Store?"*
+- Multi-keyword ranking history: *"What has Clash of Clans' ranking been for 'clan', 'war', and 'strategy' over the last 30 days on the US App Store?"*
+- Multi-keyword ranking history chart: *"Can you chart Clash of Clans' ranking for 'clan', 'war', and 'strategy' over the last 30 days on the US App Store?"*
 - Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US App Store?"*
 - Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US App Store?"*
 - Batch-resolve competitor names: *"Can you also show me the names of the apps that rank for 'meditation' on the US App Store?"*

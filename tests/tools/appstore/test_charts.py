@@ -119,6 +119,69 @@ class TestPlotKeywordRankingHistory:
         assert captured["histories_by_app"] == {"Clash of Clans": _HISTORY}
 
 
+class TestPlotKeywordRankingHistoryMulti:
+    def test_invalid_input_raises_fastmcp_tool_error(self):
+        with pytest.raises(FastMCPToolError):
+            charts.plot_appstore_keyword_ranking_history_multi(-1, "US", "clan,war", "2026-07-01", "2026-07-05")
+
+    def test_no_history_for_any_keyword_raises_fastmcp_tool_error(self, monkeypatch):
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history_multi", lambda *a: {"clan": [], "war": []})
+
+        with pytest.raises(FastMCPToolError, match="No ranking history found"):
+            charts.plot_appstore_keyword_ranking_history_multi(529479190, "US", "clan,war", "2026-07-01", "2026-07-05")
+
+    def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(
+            charts, "fetch_keyword_ranking_history_multi", lambda *a: {"clan": _HISTORY, "war": _HISTORY}
+        )
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        result = charts.plot_appstore_keyword_ranking_history_multi(
+            529479190, "US", "clan,war", "2026-07-01", "2026-07-02"
+        )
+        assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
+
+    def test_dashboard_is_built_with_one_series_per_keyword_using_app_store_merged_platform(self, monkeypatch):
+        captured = {}
+
+        def fake_render(histories_by_app, keyword, country_code, start_date, end_date, platform, series_label):
+            captured["histories_by_app"] = histories_by_app
+            captured["keyword"] = keyword
+            captured["platform"] = platform
+            captured["series_label"] = series_label
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(
+            charts, "fetch_keyword_ranking_history_multi", lambda *a: {"clan": _HISTORY, "war": _HISTORY}
+        )
+        monkeypatch.setattr(charts, "render_dashboard_html", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_appstore_keyword_ranking_history_multi(529479190, "US", "clan,war", "2026-07-01", "2026-07-02")
+
+        assert captured["histories_by_app"] == {"clan": _HISTORY, "war": _HISTORY}
+        assert captured["keyword"] == "Clash of Clans"
+        assert captured["platform"] is charts.APP_STORE_MERGED
+        assert captured["series_label"] == "Keyword"
+
+    def test_fetches_once_for_all_keywords_not_once_per_keyword(self, monkeypatch):
+        calls = []
+
+        def fake_fetch(track_id, country_code, keywords, start_date, end_date):
+            calls.append(keywords)
+            return {"clan": _HISTORY, "war": _HISTORY}
+
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history_multi", fake_fetch)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_appstore_keyword_ranking_history_multi(529479190, "US", "clan,war", "2026-07-01", "2026-07-02")
+        assert calls == ["clan,war"]
+
+
 class TestResolveAppLabel:
     def test_returns_app_name_on_success(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_app_by_track_id", lambda track_id, country: {"trackName": "Clash of Clans"})

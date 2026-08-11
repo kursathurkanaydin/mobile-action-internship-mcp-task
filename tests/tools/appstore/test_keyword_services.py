@@ -49,6 +49,27 @@ class TestGetKeywordRankingHistory:
         assert "error" in result
 
 
+class TestGetKeywordRankingHistoryMulti:
+    def test_success_wraps_service_data_under_history_by_keyword(self, monkeypatch):
+        fake_data = {
+            "clan": [{"date": "2026-07-01T00:00:00", "rank": 5, "appKind": "IPHONE"}],
+            "war": [{"date": "2026-07-01T00:00:00", "rank": 10, "appKind": "IPHONE"}],
+        }
+        monkeypatch.setattr(ks, "fetch_keyword_ranking_history_multi", lambda *a: fake_data)
+        result = ks.get_appstore_keyword_ranking_history_multi(
+            529479190, "US", "clan,war", "2026-07-01", "2026-07-01"
+        )
+        assert result == {"history_by_keyword": fake_data}
+
+    def test_service_error_returns_error_shape(self, monkeypatch):
+        def raise_error(*a):
+            raise ToolError("'keywords' cannot be empty")
+
+        monkeypatch.setattr(ks, "fetch_keyword_ranking_history_multi", raise_error)
+        result = ks.get_appstore_keyword_ranking_history_multi(529479190, "US", "", "2026-07-01", "2026-07-01")
+        assert "error" in result
+
+
 class TestGetKeywordMetadata:
     def test_success_wraps_service_data_under_metadata(self, monkeypatch):
         fake_data = {"searchVolume": 500, "popularity": 80}

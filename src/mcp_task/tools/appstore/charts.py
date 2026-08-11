@@ -1,11 +1,19 @@
 from fastmcp.exceptions import ToolError as FastMCPToolError
 
-from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ranking_dashboard
+from mcp_task.charting.dashboard import (
+    APP_STORE_MERGED,
+    render_dashboard_html,
+    render_keyword_ranking_dashboard,
+)
 from mcp_task.charting.server import publish_html
 from mcp_task.errors import ToolError, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_track_id
-from mcp_task.services.appstore.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
+from mcp_task.services.appstore.keyword_service import (
+    fetch_keyword_ranking,
+    fetch_keyword_ranking_history,
+    fetch_keyword_ranking_history_multi,
+)
 from mcp_task.validation.appstore import require_track_id_list
 
 
@@ -103,6 +111,10 @@ def plot_appstore_keyword_ranking_history(
     use compare_appstore_keyword_ranking_history instead; it produces one combined
     dashboard rather than separate charts you'd have to describe yourself.
 
+    Do NOT call this once per keyword either — if the user wants MULTIPLE
+    keywords' history for the SAME app charted together, use
+    plot_appstore_keyword_ranking_history_multi instead.
+
     Returns a clickable URL (served from a local, loopback-only HTTP server)
     that opens the interactive chart page in a browser.
 
@@ -132,6 +144,80 @@ def plot_appstore_keyword_ranking_history(
     label = _resolve_app_label(track_id, country_code)
     chart_html = render_dashboard_html({label: history}, keyword, country_code, start_date, end_date)
     chart_url = publish_html(chart_html)
+
+    return {"chart_url": chart_url}
+
+
+@mcp.tool
+@with_credit_usage
+def plot_appstore_keyword_ranking_history_multi(
+    track_id: int,
+    country_code: str,
+    keywords: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Render ONE app's App Store ranking history for MULTIPLE keywords as an interactive chart.
+
+    Same underlying data as get_appstore_keyword_ranking_history_multi, drawn as a
+    live Chart.js line chart (one line per keyword, hover a point for its
+    exact date/rank) instead of raw JSON. iPhone/iPad ranks are pre-merged
+    into a single best-rank-per-day line per keyword (no device toggle here)
+    — a 3rd axis (device) on top of the 2 already in play (keyword x time)
+    would be too busy to read, same reasoning as
+    compare_appstore_keyword_ranking_history's device merging.
+
+    Only call this tool if the request contains an EXPLICIT visual keyword:
+    "chart", "graph", "plot", "visualize", "draw", or "show me a
+    chart/graph/graphic". Generic trend/change wording with no such keyword
+    stays with get_appstore_keyword_ranking_history_multi instead.
+
+    Do NOT call this once per keyword — pass all the keywords comma-separated
+    in one call; this tool fetches every keyword's history itself (one
+    MobileAction request per keyword, since the history endpoint has no
+    batch-keyword mode) and renders them as one combined chart. The date
+    range should not exceed 30 days per request; up to 10 keywords are
+    supported.
+
+    Returns a clickable URL (served from a local, loopback-only HTTP server)
+    that opens the interactive chart page in a browser.
+
+    IMPORTANT: this URL is only useful if the user can see and click it, so
+    you MUST paste the exact returned chart_url into your reply to the user
+    as a markdown link, e.g. "[View the ranking chart]({chart_url})" — do not
+    just say the chart is ready without including the link itself.
+
+    Args:
+        track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).
+        country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
+        keywords: Two or more keywords, comma-separated (e.g. "clan,war,strategy").
+        start_date: History start date, inclusive, in YYYY-MM-DD format.
+        end_date: History end date, inclusive, in YYYY-MM-DD format.
+    """
+    try:
+        histories_by_keyword = fetch_keyword_ranking_history_multi(
+            track_id, country_code, keywords, start_date, end_date
+        )
+    except ToolError as exc:
+        raise FastMCPToolError(exc.message) from exc
+
+    if not any(histories_by_keyword.values()):
+        raise FastMCPToolError(
+            f"No ranking history found for any of the given keywords (track {track_id}, {country_code}, "
+            f"{start_date} to {end_date})."
+        )
+
+    app_name = _resolve_app_label(track_id, country_code)
+    dashboard_html = render_dashboard_html(
+        histories_by_keyword,
+        app_name,
+        country_code,
+        start_date,
+        end_date,
+        platform=APP_STORE_MERGED,
+        series_label="Keyword",
+    )
+    chart_url = publish_html(dashboard_html)
 
     return {"chart_url": chart_url}
 
