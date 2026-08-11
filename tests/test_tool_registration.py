@@ -42,7 +42,7 @@ class TestNoDuplicateToolNames:
         # namespaced by module - two @mcp.tool functions with the same name
         # in different files silently overwrite each other in the registry
         # (only a runtime warning, easy to miss). This bit the project once
-        # already (what's now compare_appstore_keyword_ranking_history was
+        # already (what's now plot_compare_appstore_keyword_ranking_history was
         # briefly named compare_keyword_ranking_history when the collision
         # happened), hence this static check.
         seen: dict[str, Path] = {}

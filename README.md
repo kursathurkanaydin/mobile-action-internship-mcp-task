@@ -118,7 +118,7 @@ for rendering.
 | `plot_appstore_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_appstore_keyword_ranking`) |
 | `plot_appstore_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_appstore_keyword_ranking_history`) |
 | `plot_appstore_keyword_ranking_history_multi` | Line chart comparing one app's rank across 2–10 keywords over time. iPhone/iPad ranks are pre-merged — no device toggle. | 10 × number of keywords (one history call per keyword) |
-| `compare_appstore_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
+| `plot_compare_appstore_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
 | `plot_playstore_keyword_ranking_history` | Line chart of one Google Play app's rank over time, one keyword. No device toggle (Play Store has no iPhone/iPad split). | 10 (same as `get_playstore_keyword_ranking_history`) |
 | `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
 | `plot_compare_stores_keyword_ranking` | Grouped bar chart comparing one app's App Store vs Play Store rank, per keyword, one day. | 3 + 3 (same as `compare_stores_keyword_ranking`) |
@@ -131,7 +131,7 @@ trackId, `US` storefront, keyword `strategy`). The two chart tools that plot
 a single app/keyword (`plot_appstore_keyword_ranking`, `plot_appstore_keyword_ranking_history`)
 hit the exact same endpoints as `get_appstore_keyword_ranking` /
 `get_appstore_keyword_ranking_history` below — they just render the response as a
-chart instead of returning it raw; `compare_appstore_keyword_ranking_history` calls
+chart instead of returning it raw; `plot_compare_appstore_keyword_ranking_history` calls
 the `get_appstore_keyword_ranking_history` endpoint once per app being compared,
 and `get_appstore_keyword_ranking_history_multi`/`plot_appstore_keyword_ranking_history_multi`
 call it once per keyword for the same app.
@@ -458,7 +458,7 @@ server, not namespaced by Python module, and nothing catches a
 same-named `@mcp.tool` in a different file at import time (the second
 one silently replaces the first in FastMCP's registry, with only a
 runtime warning easy to miss). This bit us once already: an App Store tool
-comparing multiple apps (now named `compare_appstore_keyword_ranking_history`,
+comparing multiple apps (now named `plot_compare_appstore_keyword_ranking_history`,
 but at the time just `compare_keyword_ranking_history`) already existed
 before a cross-store tool was almost given the exact same name (comparing
 stores) — hence the `compare_stores_*` prefix for anything that compares
@@ -505,7 +505,7 @@ actually spent: `credit_cost` (an `int`, summed across every MobileAction API
 request the tool made) and `credit_remaining` (the account's balance after
 the last of those requests). A tool that fetches one thing (e.g.
 `get_appstore_keyword_ranking`) shows the cost of that one call; a tool that fans out
-to several apps/stores (e.g. `compare_appstore_keyword_ranking_history` across 5 apps)
+to several apps/stores (e.g. `plot_compare_appstore_keyword_ranking_history` across 5 apps)
 shows the *sum* of all of them, not just the last one — the field genuinely
 means "what this call cost you," not "what the last request cost." Neither
 field appears at all if the response was served from Redis cache (see

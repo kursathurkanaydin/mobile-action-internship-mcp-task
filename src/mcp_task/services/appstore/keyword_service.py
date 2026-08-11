@@ -67,7 +67,7 @@ def fetch_keyword_ranking_history(
     """Validate inputs and fetch App Store keyword ranking history for a date range.
 
     Shared by get_appstore_keyword_ranking_history, plot_appstore_keyword_ranking_history, and
-    compare_appstore_keyword_ranking_history so they stay in sync on request shape and
+    plot_compare_appstore_keyword_ranking_history so they stay in sync on request shape and
     validation. Raises InputValidationError on a bad input or
     MobileActionAPIError on failure; returns the raw list of per-day,
     per-device {trackId, keyword, rank, countryCode, date, appKind} entries.

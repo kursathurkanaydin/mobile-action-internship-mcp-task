@@ -43,7 +43,7 @@ def plot_appstore_keyword_ranking(
     a glance (e.g. "chart app X's ranking for these keywords", "visualize app
     X's keyword rankings"), as opposed to a single keyword's trend over time
     (use plot_appstore_keyword_ranking_history for that) or comparing apps (use
-    compare_appstore_keyword_ranking_history for that). This is a single-day snapshot,
+    plot_compare_appstore_keyword_ranking_history for that). This is a single-day snapshot,
     not a trend.
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
@@ -108,7 +108,7 @@ def plot_appstore_keyword_ranking_history(
 
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare (vs, side-by-side, "which one ranks better"),
-    use compare_appstore_keyword_ranking_history instead; it produces one combined
+    use plot_compare_appstore_keyword_ranking_history instead; it produces one combined
     dashboard rather than separate charts you'd have to describe yourself.
 
     Do NOT call this once per keyword either — if the user wants MULTIPLE
@@ -165,7 +165,7 @@ def plot_appstore_keyword_ranking_history_multi(
     into a single best-rank-per-day line per keyword (no device toggle here)
     — a 3rd axis (device) on top of the 2 already in play (keyword x time)
     would be too busy to read, same reasoning as
-    compare_appstore_keyword_ranking_history's device merging.
+    plot_compare_appstore_keyword_ranking_history's device merging.
 
     Only call this tool if the request contains an EXPLICIT visual keyword:
     "chart", "graph", "plot", "visualize", "draw", or "show me a
@@ -224,7 +224,7 @@ def plot_appstore_keyword_ranking_history_multi(
 
 @mcp.tool
 @with_credit_usage
-def compare_appstore_keyword_ranking_history(
+def plot_compare_appstore_keyword_ranking_history(
     track_ids: str,
     country_code: str,
     keyword: str,

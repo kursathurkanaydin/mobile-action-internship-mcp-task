@@ -97,7 +97,7 @@ def get_appstore_keyword_ranking_history(
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare/vs/side-by-side for the same keyword (with or
     without asking for a "dashboard" or "chart"), use
-    compare_appstore_keyword_ranking_history instead; it fetches every app's history
+    plot_compare_appstore_keyword_ranking_history instead; it fetches every app's history
     itself in one call and renders the comparison, which this tool cannot do.
 
     Do NOT call this once per keyword to cover multiple keywords for the SAME

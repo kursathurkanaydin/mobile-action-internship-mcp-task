@@ -43,7 +43,7 @@ COMPARE = StorePlatform(devices=["COMPARE"], label="App Store vs Play Store")
 # "App Store" like the normal platform since there's only one store in
 # play here — a 3rd axis (device) on top of the 2 already in play (keyword
 # x time) would be too busy to read, matching
-# compare_appstore_keyword_ranking_history's reasoning for merging devices
+# plot_compare_appstore_keyword_ranking_history's reasoning for merging devices
 # when apps (not keywords) are the other axis.
 APP_STORE_MERGED = StorePlatform(devices=["APP_STORE_MERGED"], label="App Store")
 
