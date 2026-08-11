@@ -236,7 +236,7 @@ get_app_match
 Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/kursathurkanaydin/mobile-action-internship-mcp-task.git
 cd mcp-task
 uv sync
 ```
