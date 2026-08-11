@@ -17,6 +17,12 @@ def _app_url(track_id: str) -> str:
 def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en") -> dict:
     """Search Google Play by app name for candidate package ids.
 
+    Call this whenever the user asks for an app's Google Play package id by
+    name — either standalone or before another tool that needs it. Prefer
+    this over guessing a package id from the app's name or searching the
+    web, even though it's best-effort (see below) — it's still more
+    reliable than a guess.
+
     UNOFFICIAL AND BEST-EFFORT — Google has no public search API and
     MobileAction has no Play Store name search either, so this scrapes Play
     Store's search page via the unofficial google-play-scraper package. A
@@ -50,10 +56,13 @@ def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en")
 def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
     """Look up a Google Play app's name and details by its package id or Play Store URL.
 
-    Use get_playstore_app_id first if you only have an app name and no
-    id/URL — that tool searches by name (unofficially, best-effort); this
-    one is the reliable, MobileAction-backed lookup once you have an id. If
-    the user gives a Play Store link instead of a bare id (e.g.
+    Call this whenever the user gives a package id/URL and asks what app it
+    is or wants its details — even as a standalone question, not just
+    before another tool call. Use get_playstore_app_id first if you only
+    have an app name and no id/URL — that tool searches by name
+    (unofficially, best-effort); this one is the reliable,
+    MobileAction-backed lookup once you have an id. If the user gives a
+    Play Store link instead of a bare id (e.g.
     "https://play.google.com/store/apps/details?id=com.facebook.katana"),
     pass it straight through — the id is extracted automatically.
 

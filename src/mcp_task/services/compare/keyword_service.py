@@ -1,9 +1,10 @@
 from mcp_task.services.appstore import keyword_service as appstore_keyword_service
 from mcp_task.services.playstore import keyword_service as playstore_keyword_service
 
-# Needs a real id from each store — there's no automatic way to map an App
-# Store trackId to its Play Store package id (or vice versa), so callers
-# always supply both explicitly. Validation happens inside each store's own
+# Needs a real id from each store; callers always supply both explicitly
+# rather than this module resolving one from the other (tools/other's
+# get_app_match can do that resolution first, as a separate step, if the
+# caller only has one id). Validation happens inside each store's own
 # fetch_* function (require_track_id vs require_package_name), so it isn't
 # repeated here.
 

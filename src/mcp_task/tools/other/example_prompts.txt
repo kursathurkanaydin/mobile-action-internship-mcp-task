@@ -1,0 +1,7 @@
+Türkçe::
+  - App match (get_app_match): "trackId'si 284882215 olan uygulamanın Google Play'deki paket id'si nedir?"
+  - App match, ters yön (get_app_match): "com.facebook.katana paket id'li uygulamanın App Store id'si nedir?"
+
+English:
+  - App match (get_app_match): "What's the Google Play package id for the App Store app with trackId 284882215?"
+  - App match, reverse direction (get_app_match): "What's the App Store id for the app with package id com.facebook.katana?"

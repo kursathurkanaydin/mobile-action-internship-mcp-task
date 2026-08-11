@@ -89,10 +89,18 @@ not a trusted single answer. Not cached, since it's a live search.
 | `get_playstore_app_name` | Resolve a Google Play package id or Play Store URL to the app's name/details. Internally a single-id call to the same endpoint `_batch` uses (the pricier "detailed" endpoint's extra fields — full description, screenshots, rating breakdown — aren't used here). | 1, 0 on a cache hit |
 | `get_playstore_app_names_batch` | Resolve multiple package ids to names in one request (flat cost regardless of count). | 1, 0 on a cache hit |
 
+**Other Services** (MobileAction's `/app-match/*` — a category of its own in
+MobileAction's docs, distinct from either store's Keyword/Category/App
+Services). Unlike every other endpoint this project calls, app-match replies
+with a bare `text/plain` body (e.g. `com.facebook.katana`), not JSON —
+`clients/mobileaction.py`'s `get()` takes a `raw=True` flag for exactly this.
+| Tool | Description | Credits/call |
+|---|---|---|
+| `get_app_match` | Resolve an app's id on the OPPOSITE store, given its id on one store — the authoritative way to find the Play Store package id for an App Store trackId, or vice versa. **Redis-cached for 24h** (an app's counterpart is stable metadata). | 10, 0 on a cache hit |
+
 **Cross-store comparison** (bonus — needs the SAME app's id on both stores;
-there's no automatic mapping between an App Store trackId and a Play Store
-package id, so both are always required explicitly). Cost is the sum of both
-stores' underlying calls.
+if you only have one, resolve the other first with `get_app_match`). Cost is
+the sum of both stores' underlying calls.
 | Tool | Description | Credits/call |
 |---|---|---|
 | `compare_stores_keyword_metadata` | Search volume/popularity for a keyword on both stores. App-independent — no app id needed. | 5 + 5, 0 per side on a cache hit |
@@ -207,6 +215,12 @@ Store and Play Store endpoints above once each, in one call — e.g.
 hits the exact same two `get_appstore_keyword_ranking` / `get_playstore_keyword_ranking`
 URLs shown earlier, combined under `{"app_store": ..., "play_store": ...}`.
 
+```
+get_app_match
+  GET https://api.mobileaction.co/app-match/app/ios?trackId=284882215&token=YOUR_API_KEY
+  -> "com.facebook.katana"   (a bare text/plain body, not JSON — see get(..., raw=True))
+```
+
 ## Setup
 
 Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
@@ -312,6 +326,11 @@ versions in the matching `example_prompts.txt` file):
 - Organic impression share: *"What's the organic impression share for 'meditation' split across competing apps on the US Play Store?"*
 - Share of category: *"What app categories does the keyword 'meditation' fall into on the US Play Store?"*
 
+**Other** ([`tools/other/example_prompts.txt`](src/mcp_task/tools/other/example_prompts.txt))
+
+- App match: *"What's the Google Play package id for the App Store app with trackId 284882215?"*
+- App match, reverse direction: *"What's the App Store id for the app with package id com.facebook.katana?"*
+
 **Cross-store comparison** ([`tools/compare/example_prompts.txt`](src/mcp_task/tools/compare/example_prompts.txt))
 
 - Keyword metadata: *"Is 'meditation' searched more on the App Store or Google Play?"*
@@ -340,17 +359,21 @@ src/mcp_task/
   services/    validation + fetch logic, reusable across tools
     appstore/    keyword_service.py, app_service.py (iTunes-backed)
     playstore/   keyword_service.py, app_service.py
+    other/       app_service.py — MobileAction's own "Other Services" category
     cache.py     shared Redis-caching helper (both stores' MobileAction fetches)
   validation/  input validation, split the same way as services/
     common.py    shared validators (country_code, text, date, date_range, positive_int, keyword_list)
     appstore.py  App Store-only (numeric track_id, device, track_id_list)
     playstore.py Play Store-only (package_name, package_name_list)
+    other.py     store enum for app-match ("ios" or "play")
   charting/    HTML/Chart.js dashboard rendering — generic, reused by any store's chart tools
   tools/       the @mcp.tool definitions themselves
     appstore/    keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
     playstore/   keyword_services.py, app_lookup.py, charts.py, example_prompts.txt
     compare/     keyword_services.py, charts.py — needs BOTH stores, so it's
                  neither appstore/ nor playstore/; see below
+    other/       app_service.py, example_prompts.txt — MobileAction endpoints
+                 that aren't under either store's own API namespace
     account.py   (not store-specific, stays top-level)
 ```
 
@@ -368,16 +391,22 @@ category alongside `appstore/`/`playstore/`, for tools that need data from
 from both stores' service modules directly rather than duplicating fetch
 logic, and their charts reuse the same `render_dashboard_html`/`StorePlatform`
 mechanism via a third platform, `COMPARE` (a single merged axis labeling each
-series by store instead of by device). New tool files (or a whole new store
-or compare subpackage) are picked up automatically: `mcp_instance.py`
-recursively walks `tools/` at startup (`pkgutil.walk_packages`, not the
-non-recursive `iter_modules` — subpackages need the recursive version)
-instead of hand-listing imports, so nothing needs to be wired in by hand.
+series by store instead of by device). `services/other/` and `tools/other/`
+are a fourth category, for MobileAction endpoints that are neither
+store-specific nor a cross-store comparison — they live under their own
+namespace in MobileAction's own API/docs (`/app-match/*`, categorized as
+"Other Services" rather than under either store's Keyword/Category/App
+Services). New tool files (or a whole new store, compare, or other
+subpackage) are picked up automatically: `mcp_instance.py` recursively
+walks `tools/` at startup (`pkgutil.walk_packages`, not the non-recursive
+`iter_modules` — subpackages need the recursive version) instead of
+hand-listing imports, so nothing needs to be wired in by hand.
 
 Redis cache keys follow the same split: App Store keys are
-`mcp:appstore:<thing>:...`, Play Store keys are `mcp:playstore:<thing>:...` —
-always prefix a new cache key with its store name so keys stay
-distinguishable at a glance (e.g. in `redis-cli KEYS 'mcp:*'`).
+`mcp:appstore:<thing>:...`, Play Store keys are `mcp:playstore:<thing>:...`,
+`other/` keys are `mcp:other:<thing>:...` — always prefix a new cache key
+with its category name so keys stay distinguishable at a glance (e.g. in
+`redis-cli KEYS 'mcp:*'`).
 
 ## Adding a new tool
 
@@ -429,6 +458,16 @@ runtime) — same file also fails the suite if a new tool forgets
 `@handle_tool_errors` outside a `charts.py` file, or forgets
 `@with_credit_usage` (no exemption for that one — every tool, chart or not,
 must have it).
+
+A MobileAction endpoint that's neither store-specific nor a comparison (i.e.
+its own category in MobileAction's docs, like `/app-match/*` under "Other
+Services")? It goes under `services/other/` / `tools/other/` instead —
+`app_service.py` in each is named generically (not `app_match_service.py`)
+on purpose, so future "Other Services" endpoints (e.g. Visibility Score) can
+land as new functions in the same file rather than each getting a
+one-function file of its own. Check the response's `Content-Type` before
+assuming it's JSON: app-match replies with plain text, not JSON, which
+`get()`'s `raw=True` flag exists to handle (see `clients/mobileaction.py`).
 
 ### Error handling
 

@@ -40,13 +40,15 @@ def compare_stores_keyword_ranking(
 ) -> dict:
     """Compare one app's current App Store vs Google Play ranking for one or more keywords.
 
-    Needs the SAME app's id on both stores — there's no automatic mapping
-    between an App Store trackId and a Play Store package id, so both must
-    be given explicitly. If you only have a name, resolve it first with
-    get_appstore_id (App Store, authoritative search) and
-    get_playstore_app_id/get_playstore_app_name (Play Store — no real
-    search exists, see get_playstore_app_id's docstring). This is a
-    single-day snapshot; for a trend over time use
+    Needs the SAME app's id on both stores — both must be given explicitly.
+    If you have one id but not the other, resolve the missing one with
+    get_app_match (MobileAction's official app-pairing lookup) rather than
+    searching by name on the side you're missing. If you don't have EITHER
+    id yet, resolve one first with get_appstore_id (App Store, authoritative
+    search) or get_playstore_app_id/get_playstore_app_name (Play Store — no
+    real search exists, see get_playstore_app_id's docstring), then use
+    get_app_match to find the other. This is a single-day snapshot; for a
+    trend over time use
     compare_stores_keyword_ranking_history instead, or
     plot_compare_stores_keyword_ranking if the request wants a chart.
 

@@ -42,12 +42,15 @@ def _build_params(params: dict | None) -> dict:
     return request_params
 
 
-def _handle_response(response: httpx.Response, path: str) -> dict | list | None:
-    """Shared by get()/post(): credit-cost logging, error handling, and JSON parsing.
+def _handle_response(response: httpx.Response, path: str, raw: bool = False) -> dict | list | str | None:
+    """Shared by get()/post(): credit-cost logging, error handling, and body parsing.
 
     Returns None for a 2xx response with an empty body (e.g. the Google Play
     app-detail endpoint returns 204 for an unrecognized package id) rather
-    than crashing on response.json() with nothing to parse.
+    than crashing on response.json() with nothing to parse. raw=True skips
+    JSON parsing and returns response.text instead - the one MobileAction
+    endpoint found so far that needs this (app-match) replies with a bare
+    text/plain body, not JSON, so response.json() would raise.
     """
     credit_remaining = response.headers.get("X-Credit-Remaining")
     credit_cost = response.headers.get("X-Credit-Cost")
@@ -69,15 +72,17 @@ def _handle_response(response: httpx.Response, path: str) -> dict | list | None:
     if not response.content:
         return None
 
-    return response.json()
+    return response.text if raw else response.json()
 
 
-def get(path: str, params: dict | None = None) -> dict | list | None:
+def get(path: str, params: dict | None = None, raw: bool = False) -> dict | list | str | None:
     """Make an authenticated GET request to the MobileAction API.
 
     Appends the API token, logs the credit cost/remaining from response headers,
     and raises MobileActionAPIError with a clean message on any failure (network
     error or non-2xx response) instead of letting a raw exception propagate.
+    Pass raw=True for the rare endpoint that replies with plain text instead
+    of JSON (see _handle_response).
     """
     url = f"{MOBILEACTION_BASE_URL}{path}"
 
@@ -86,7 +91,7 @@ def get(path: str, params: dict | None = None) -> dict | list | None:
     except httpx.RequestError as exc:
         raise MobileActionAPIError(f"Network error while calling MobileAction API: {exc}") from exc
 
-    return _handle_response(response, path)
+    return _handle_response(response, path, raw=raw)
 
 
 def post(path: str, params: dict | None = None, json: dict | list | None = None) -> dict | list | None:

@@ -12,6 +12,14 @@ class TestGetSuccess:
         )
         assert mobileaction.get("/api-key") == {"ok": True}
 
+    def test_raw_true_returns_text_instead_of_parsing_json(self, monkeypatch, fake_response):
+        # app-match replies with a bare text/plain body ("com.facebook.katana"),
+        # not JSON - response.json() would raise on it.
+        monkeypatch.setattr(
+            mobileaction.httpx, "get", lambda *a, **k: fake_response(200, text="com.facebook.katana")
+        )
+        assert mobileaction.get("/path", raw=True) == "com.facebook.katana"
+
     def test_credit_headers_are_recorded_via_credit_tracking(self, monkeypatch, fake_response):
         credit_tracking.reset()
         headers = {"X-Credit-Cost": "10", "X-Credit-Remaining": "48230"}
