@@ -109,6 +109,7 @@ for rendering.
 | `plot_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_keyword_ranking`) |
 | `plot_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_keyword_ranking_history`) |
 | `compare_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
+| `plot_playstore_keyword_ranking_history` | Line chart of one Google Play app's rank over time, one keyword. No device toggle (Play Store has no iPhone/iPad split). | 10 (same as `get_playstore_keyword_ranking_history`) |
 | `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
 | `plot_compare_stores_keyword_ranking` | Grouped bar chart comparing one app's App Store vs Play Store rank, per keyword, one day. | 3 + 3 (same as `compare_stores_keyword_ranking`) |
 | `plot_compare_stores_keyword_ranking_history` | Line chart comparing one app's App Store vs Play Store rank over time, one keyword. App Store's iPhone/iPad ranks are pre-merged — no device toggle. | 10 + 10 (same as `compare_stores_keyword_ranking_history`) |
@@ -168,6 +169,10 @@ using a package name instead of a numeric trackId (`com.duolingo` below):
 get_playstore_keyword_ranking
   GET https://api.mobileaction.co/playstore-keyword-ranking/com.duolingo/US/keywordrankings
       ?keywords=language+learning&token=YOUR_MOBILEACTION_API_KEY
+
+get_playstore_keyword_ranking_history            (and plot_playstore_keyword_ranking_history — same call)
+  GET https://api.mobileaction.co/playstore-keyword-ranking/com.supercell.clashofclans/TR/strateji/keywordrankings
+      ?startDate=2026-07-12&endDate=2026-08-10&token=YOUR_MOBILEACTION_API_KEY
 
 get_playstore_keyword_ranking_history_multi      (and plot_playstore_keyword_ranking_history_multi — same call, once per keyword)
   GET https://api.mobileaction.co/playstore-keyword-ranking/com.supercell.clashofclans/TR/oyun/keywordrankings
@@ -281,14 +286,14 @@ versions in the matching `example_prompts.txt` file):
 - Batch app name lookup: *"Can you show me the names of the apps with track ids 570060128, 389801252, and 284882215?"*
 - Keyword ranking: *"What's Clash of Clans' current ranking for the keyword 'strategy' on the US App Store?"*
 - Top keywords: *"Show me the keywords that bring Facebook the most search volume on the US App Store for 2026-07-01."*
-- Ranking history: *"How has Clash of Clans' ranking for the keyword 'strategy game' changed over the last 30 days on the US store?"*
+- Ranking history: *"How has Clash of Clans' ranking for the keyword 'strategy game' changed over the last 30 days on the US App Store?"*
 - Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US App Store?"*
 - Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US App Store?"*
 - Batch-resolve competitor names: *"Can you also show me the names of the apps that rank for 'meditation' on the US App Store?"*
 - Organic keywords (costs 50 credits, test carefully): *"Show me the keywords Duolingo organically ranks for on iPhone, for the date 2026-07-01."*
 - Compare history: *"Can you compare Clash of Clans and Clash Royale's ranking history for the keyword 'strategy game' on the US App Store over the last 15 days?"*
 - Keyword ranking chart: *"Can you chart Clash of Clans' ranking for the keywords 'clan', 'clash', 'war', and 'strategy' on the US App Store?"*
-- Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US store?"*
+- Ranking history chart: *"Can you show me a chart of how Clash of Clans' ranking for the keyword 'strategy game' has changed over the last 30 days on the US App Store?"*
 
 **Google Play** ([`tools/playstore/example_prompts.txt`](src/mcp_task/tools/playstore/example_prompts.txt))
 
@@ -299,6 +304,7 @@ versions in the matching `example_prompts.txt` file):
 - Keyword ranking: *"What rank does com.duolingo have for the keyword 'language learning' on the US Play Store?"*
 - Top keywords: *"Show me the keywords that bring com.duolingo the most search volume on the US Play Store for 2026-07-01."*
 - Ranking history: *"How has com.duolingo's ranking for the keyword 'language learning' changed over the last 30 days on the US Play Store?"*
+- Ranking history chart: *"Can you show me a chart of how com.duolingo's ranking for the keyword 'language learning' has changed over the last 30 days on the US Play Store?"*
 - Multi-keyword ranking history chart: *"Can you chart Clash of Clans' ranking for 'game', 'strategy', 'clan', and 'war' over the last 30 days on Google Play?"*
 - Keyword metadata: *"What's the search volume and popularity of the keyword 'meditation' on the US Play Store?"*
 - Competitor/app lookup: *"Which apps rank for the keyword 'meditation' on the US Play Store?"*

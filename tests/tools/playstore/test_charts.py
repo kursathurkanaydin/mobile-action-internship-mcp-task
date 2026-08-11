@@ -27,6 +27,54 @@ class TestResolveAppLabel:
         assert charts._resolve_app_label("com.supercell.clashofclans") == "com.supercell.clashofclans"
 
 
+class TestPlotPlaystoreKeywordRankingHistory:
+    def test_invalid_input_raises_fastmcp_tool_error(self):
+        with pytest.raises(FastMCPToolError):
+            charts.plot_playstore_keyword_ranking_history(
+                "not-a-package-name", "US", "game", "2026-07-01", "2026-07-05"
+            )
+
+    def test_no_history_found_raises_fastmcp_tool_error(self, monkeypatch):
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: [])
+
+        with pytest.raises(FastMCPToolError, match="No ranking history found"):
+            charts.plot_playstore_keyword_ranking_history(
+                "com.supercell.clashofclans", "US", "game", "2026-07-01", "2026-07-05"
+            )
+
+    def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id: "Clash of Clans")
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        result = charts.plot_playstore_keyword_ranking_history(
+            "com.supercell.clashofclans", "US", "game", "2026-07-01", "2026-07-02"
+        )
+        assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
+
+    def test_dashboard_is_built_for_a_single_app_using_play_store_platform(self, monkeypatch):
+        captured = {}
+
+        def fake_render(histories_by_app, keyword, country_code, start_date, end_date, platform):
+            captured["histories_by_app"] = histories_by_app
+            captured["keyword"] = keyword
+            captured["platform"] = platform
+            return b"<html></html>"
+
+        monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
+        monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id: "Clash of Clans")
+        monkeypatch.setattr(charts, "render_dashboard_html", fake_render)
+        monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
+
+        charts.plot_playstore_keyword_ranking_history(
+            "com.supercell.clashofclans", "US", "game", "2026-07-01", "2026-07-02"
+        )
+
+        assert captured["histories_by_app"] == {"Clash of Clans": _HISTORY}
+        assert captured["keyword"] == "game"
+        assert captured["platform"] is charts.PLAY_STORE
+
+
 class TestPlotPlaystoreKeywordRankingHistoryMulti:
     def test_invalid_input_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
