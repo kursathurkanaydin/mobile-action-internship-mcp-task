@@ -354,8 +354,14 @@ versions in the matching `example_prompts.txt` file):
 
 ## Running the tests
 
+Requires `uv sync` to have been run first (see [Setup](#setup)).
+
 ```bash
-uv run pytest
+uv run pytest                                  # run everything
+uv run pytest -v                               # print each test's name/result
+uv run pytest tests/tools/appstore/            # run one directory
+uv run pytest tests/test_tool_registration.py  # run one file
+uv run pytest -k "app_match"                   # run tests whose name matches a keyword
 ```
 
 All tests are network-free (HTTP calls are mocked), so they don't spend API
