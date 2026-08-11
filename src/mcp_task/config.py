@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import redis
 from dotenv import load_dotenv
@@ -8,6 +9,11 @@ load_dotenv()
 
 MOBILEACTION_API_KEY = os.environ.get("MOBILEACTION_API_KEY")
 MOBILEACTION_BASE_URL = "https://api.mobileaction.co"
+
+# Repo root, three levels up from this file (src/mcp_task/config.py).
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+LOG_DIR = Path(os.getenv("LOG_DIR", _REPO_ROOT / "logs"))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 if not MOBILEACTION_API_KEY:
     raise RuntimeError(

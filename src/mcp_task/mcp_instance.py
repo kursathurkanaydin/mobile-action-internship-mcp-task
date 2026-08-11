@@ -3,6 +3,10 @@ import pkgutil
 
 from fastmcp import FastMCP
 
+from mcp_task.logging_config import configure_logging
+
+configure_logging()
+
 mcp = FastMCP("MobileAction MCP Server")
 
 # Every module under mcp_task.tools (including subpackages like

@@ -12,5 +12,8 @@ wheels/
 # Secrets
 .env
 
+# Runtime logs
+/logs/
+
 # IDE
 .idea/

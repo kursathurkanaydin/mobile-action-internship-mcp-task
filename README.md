@@ -257,6 +257,28 @@ response for 24h behind a `REDIS_URL` env var (defaults to
 `redis://localhost:6379/0`). Redis isn't required to run the server — if it's
 unreachable, every cached tool just falls back to a live API call.
 
+## Logs
+
+Every run writes to `logs/mcp_task.log` (rotated at 5MB, 3 backups kept) —
+override the location with a `LOG_DIR` env var, or the level with `LOG_LEVEL`
+(defaults to `INFO`). The same lines also print to stderr, so if you're
+running the server directly (`uv run src/mcp_task/server.py`) or via MCP
+Inspector, you'll see them live in that terminal too — a client like Claude
+Desktop that spawns the server itself won't show you that terminal, so the
+log file is the reliable way to inspect what happened after the fact
+regardless of which client you're using.
+
+This is where each tool call's MobileAction credit cost is logged
+(`clients/mobileaction.py`), on top of it being surfaced directly in the
+tool's own response (see [Credit awareness](#credit-awareness)), plus any
+unexpected internal error a tool hits (`errors.py`'s `handle_tool_errors`
+logs the full traceback before converting it to a clean error dict). Only
+this project's own loggers are configured this way (everything under the
+`mcp_task` namespace) — third-party libraries like `httpx` are left alone,
+since `httpx`'s own request logging includes the full URL with the
+MobileAction API token as a query param, and that shouldn't end up sitting
+in a log file on disk.
+
 ## Running it standalone (sanity check)
 
 ```bash
