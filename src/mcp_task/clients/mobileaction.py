@@ -35,25 +35,19 @@ class MobileActionAPIError(ToolError):
         super().__init__(message, status_code=status_code, error_type=error_type)
 
 
-def get(path: str, params: dict | None = None) -> dict | list | None:
-    """Make an authenticated GET request to the MobileAction API.
+def _build_params(params: dict | None) -> dict:
+    request_params = {k: v for k, v in (params or {}).items() if v is not None}
+    request_params["token"] = MOBILEACTION_API_KEY
+    return request_params
 
-    Appends the API token, logs the credit cost/remaining from response headers,
-    and raises MobileActionAPIError with a clean message on any failure (network
-    error or non-2xx response) instead of letting a raw exception propagate.
+
+def _handle_response(response: httpx.Response, path: str) -> dict | list | None:
+    """Shared by get()/post(): credit-cost logging, error handling, and JSON parsing.
+
     Returns None for a 2xx response with an empty body (e.g. the Google Play
     app-detail endpoint returns 204 for an unrecognized package id) rather
     than crashing on response.json() with nothing to parse.
     """
-    url = f"{MOBILEACTION_BASE_URL}{path}"
-    request_params = {k: v for k, v in (params or {}).items() if v is not None}
-    request_params["token"] = MOBILEACTION_API_KEY
-
-    try:
-        response = httpx.get(url, params=request_params, timeout=15)
-    except httpx.RequestError as exc:
-        raise MobileActionAPIError(f"Network error while calling MobileAction API: {exc}") from exc
-
     credit_remaining = response.headers.get("X-Credit-Remaining")
     credit_cost = response.headers.get("X-Credit-Cost")
     if credit_remaining is not None:
@@ -74,3 +68,44 @@ def get(path: str, params: dict | None = None) -> dict | list | None:
         return None
 
     return response.json()
+
+
+def get(path: str, params: dict | None = None) -> dict | list | None:
+    """Make an authenticated GET request to the MobileAction API.
+
+    Appends the API token, logs the credit cost/remaining from response headers,
+    and raises MobileActionAPIError with a clean message on any failure (network
+    error or non-2xx response) instead of letting a raw exception propagate.
+    """
+    url = f"{MOBILEACTION_BASE_URL}{path}"
+
+    try:
+        response = httpx.get(url, params=_build_params(params), timeout=15)
+    except httpx.RequestError as exc:
+        raise MobileActionAPIError(f"Network error while calling MobileAction API: {exc}") from exc
+
+    return _handle_response(response, path)
+
+
+def post(path: str, params: dict | None = None, json: dict | list | None = None) -> dict | list | None:
+    """Make an authenticated POST request to the MobileAction API.
+
+    Same auth/error-handling/credit-logging behavior as get() (see
+    _handle_response), but for the handful of MobileAction endpoints that
+    take their real payload as a JSON body instead of query params - e.g.
+    visibility-score-history, which expects a bare JSON array of trackIds
+    as the body rather than an object, hence json accepting dict | list.
+    Only use this for read-only/compute endpoints (a report or estimate
+    that happens to need POST because its input is too large/structured for
+    a query string) - endpoints that mutate dashboard state (e.g. adding or
+    deleting tracked keywords) are a different, higher-stakes category not
+    covered by this function yet.
+    """
+    url = f"{MOBILEACTION_BASE_URL}{path}"
+
+    try:
+        response = httpx.post(url, params=_build_params(params), json=json, timeout=15)
+    except httpx.RequestError as exc:
+        raise MobileActionAPIError(f"Network error while calling MobileAction API: {exc}") from exc
+
+    return _handle_response(response, path)

@@ -109,3 +109,94 @@ class TestGetNetworkErrors:
         assert "Network error" in exc_info.value.message
         assert exc_info.value.status_code is None
         assert exc_info.value.error_type == "network"
+
+
+class TestPostSuccess:
+    def test_returns_parsed_json(self, monkeypatch, fake_response):
+        monkeypatch.setattr(
+            mobileaction.httpx, "post", lambda *a, **k: fake_response(200, json_data={"ok": True})
+        )
+        assert mobileaction.post("/api-key") == {"ok": True}
+
+    def test_json_body_is_forwarded_as_is(self, monkeypatch, fake_response):
+        captured = {}
+
+        def fake_post(url, params=None, json=None, timeout=None):
+            captured["json"] = json
+            return fake_response(200, json_data={})
+
+        monkeypatch.setattr(mobileaction.httpx, "post", fake_post)
+        mobileaction.post("/path", json=[123, 456])
+
+        assert captured["json"] == [123, 456]
+
+    def test_none_valued_params_are_dropped_before_request(self, monkeypatch, fake_response):
+        captured = {}
+
+        def fake_post(url, params=None, json=None, timeout=None):
+            captured["params"] = params
+            return fake_response(200, json_data={})
+
+        monkeypatch.setattr(mobileaction.httpx, "post", fake_post)
+        mobileaction.post("/path", params={"countries": "US", "startDate": None})
+
+        assert "startDate" not in captured["params"]
+        assert captured["params"]["countries"] == "US"
+
+    def test_api_token_is_always_appended(self, monkeypatch, fake_response):
+        captured = {}
+
+        def fake_post(url, params=None, json=None, timeout=None):
+            captured["params"] = params
+            return fake_response(200, json_data={})
+
+        monkeypatch.setattr(mobileaction.httpx, "post", fake_post)
+        mobileaction.post("/path")
+
+        assert captured["params"]["token"] == mobileaction.MOBILEACTION_API_KEY
+
+    def test_empty_body_returns_none_instead_of_raising(self, monkeypatch, fake_response):
+        monkeypatch.setattr(mobileaction.httpx, "post", lambda *a, **k: fake_response(204))
+        assert mobileaction.post("/path") is None
+
+
+class TestPostHttpErrors:
+    @pytest.mark.parametrize(
+        "status_code, expected_snippet",
+        [
+            (401, "Authentication failed"),
+            (403, "Access denied"),
+            (404, "Not found"),
+            (429, "Rate limit"),
+            (500, "unexpected error"),
+        ],
+    )
+    def test_error_status_codes_raise_with_clean_message(
+        self, monkeypatch, fake_response, status_code, expected_snippet
+    ):
+        monkeypatch.setattr(
+            mobileaction.httpx,
+            "post",
+            lambda *a, **k: fake_response(status_code, json_data={"detail": "nope"}),
+        )
+
+        with pytest.raises(mobileaction.MobileActionAPIError) as exc_info:
+            mobileaction.post("/path")
+
+        assert expected_snippet in exc_info.value.message
+        assert exc_info.value.status_code == status_code
+
+
+class TestPostNetworkErrors:
+    def test_request_error_raises_clean_message(self, monkeypatch):
+        def raise_network_error(*args, **kwargs):
+            raise httpx.ConnectError("connection refused")
+
+        monkeypatch.setattr(mobileaction.httpx, "post", raise_network_error)
+
+        with pytest.raises(mobileaction.MobileActionAPIError) as exc_info:
+            mobileaction.post("/path")
+
+        assert "Network error" in exc_info.value.message
+        assert exc_info.value.status_code is None
+        assert exc_info.value.error_type == "network"
