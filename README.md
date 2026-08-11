@@ -409,6 +409,11 @@ runtime warning easy to miss). This bit us once already:
 apps) before a cross-store tool was almost given the exact same name
 (comparing stores) — hence the `compare_stores_*` prefix for anything
 that compares two stores rather than two apps on the same store.
+`tests/test_tool_registration.py` now catches this statically (a
+duplicate `@mcp.tool` function name anywhere under `tools/` fails the
+test suite instead of silently overwriting the registry entry at
+runtime) — same file also fails the suite if a new tool forgets
+`@handle_tool_errors` outside a `charts.py` file.
 
 ### Error handling
 
