@@ -2,7 +2,7 @@ from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.dashboard import render_dashboard_html, render_keyword_ranking_dashboard
 from mcp_task.charting.server import publish_html
-from mcp_task.errors import ToolError
+from mcp_task.errors import ToolError, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_track_id
 from mcp_task.services.appstore.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
@@ -19,6 +19,7 @@ def _resolve_app_label(track_id: int, country_code: str) -> str:
 
 
 @mcp.tool
+@with_credit_usage
 def plot_keyword_ranking(
     track_id: int,
     country_code: str,
@@ -71,6 +72,7 @@ def plot_keyword_ranking(
 
 
 @mcp.tool
+@with_credit_usage
 def plot_keyword_ranking_history(
     track_id: int,
     country_code: str,
@@ -135,6 +137,7 @@ def plot_keyword_ranking_history(
 
 
 @mcp.tool
+@with_credit_usage
 def compare_keyword_ranking_history(
     track_ids: str,
     country_code: str,

@@ -2,7 +2,7 @@ from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.dashboard import PLAY_STORE, render_dashboard_html
 from mcp_task.charting.server import publish_html
-from mcp_task.errors import ToolError
+from mcp_task.errors import ToolError, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.playstore.app_service import fetch_app_by_track_id
 from mcp_task.services.playstore.keyword_service import fetch_keyword_ranking_history_multi
@@ -18,6 +18,7 @@ def _resolve_app_label(track_id: str, lang_code: str = "en") -> str:
 
 
 @mcp.tool
+@with_credit_usage
 def plot_playstore_keyword_ranking_history_multi(
     track_id: str,
     country_code: str,

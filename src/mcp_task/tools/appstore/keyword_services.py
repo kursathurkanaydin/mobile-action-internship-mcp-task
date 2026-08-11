@@ -1,4 +1,4 @@
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.keyword_service import (
     fetch_apps_for_keyword,
@@ -11,6 +11,7 @@ from mcp_task.services.appstore.keyword_service import (
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_keyword_ranking(
     track_id: int,
@@ -38,6 +39,7 @@ def get_keyword_ranking(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_top_keywords(
     track_id: int,
@@ -65,6 +67,7 @@ def get_top_keywords(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_keyword_ranking_history(
     track_id: int,
@@ -116,6 +119,7 @@ def get_keyword_ranking_history(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Get metadata about a keyword in the App Store: search volume, popularity,
@@ -134,6 +138,7 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """Get the list of apps that rank in the App Store for a given keyword.
@@ -166,6 +171,7 @@ _ORGANIC_KEYWORDS_MAX_LIMIT = 1000
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_organic_keywords(
     track_id: int,

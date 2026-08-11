@@ -1,4 +1,4 @@
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.compare.keyword_service import (
     fetch_keyword_metadata,
@@ -9,6 +9,7 @@ from mcp_task.services.compare.keyword_service import (
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def compare_stores_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Compare a keyword's search volume/popularity between the App Store and Google Play.
@@ -28,6 +29,7 @@ def compare_stores_keyword_metadata(country_code: str, keyword: str) -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def compare_stores_keyword_ranking(
     app_store_track_id: int,
@@ -61,6 +63,7 @@ def compare_stores_keyword_ranking(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def compare_stores_keyword_ranking_history(
     app_store_track_id: int,
@@ -93,6 +96,7 @@ def compare_stores_keyword_ranking_history(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def compare_stores_top_keywords(
     app_store_track_id: int,

@@ -1,9 +1,10 @@
 from mcp_task.clients.mobileaction import get
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_remaining_api_credits() -> dict:
     """Check the MobileAction API key's credit balance (total, remaining, reset period).

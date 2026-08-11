@@ -1,6 +1,7 @@
 import pytest
 
-from mcp_task.errors import ToolError, handle_tool_errors, to_error_response
+from mcp_task import credit_tracking
+from mcp_task.errors import ToolError, handle_tool_errors, to_error_response, with_credit_usage
 
 
 class TestToolError:
@@ -121,3 +122,77 @@ def test_handle_tool_errors_catches_any_exception_type(bad_exc):
     result = fn()
     assert result["error"].startswith("Unexpected internal error:")
     assert result["status_code"] is None
+
+
+class TestWithCreditUsage:
+    def test_no_recorded_usage_leaves_the_result_unchanged(self):
+        credit_tracking.reset()
+
+        @with_credit_usage
+        def fn():
+            return {"x": 1}
+
+        assert fn() == {"x": 1}
+
+    def test_recorded_usage_is_merged_into_a_dict_result(self):
+        @with_credit_usage
+        def fn():
+            credit_tracking.record(cost="10", remaining="48230")
+            return {"x": 1}
+
+        assert fn() == {"x": 1, "credit_cost": 10, "credit_remaining": 48230}
+
+    def test_multiple_api_calls_in_one_tool_have_their_cost_summed(self):
+        # e.g. a tool that fans out to 5 apps makes 5 API calls
+        @with_credit_usage
+        def fn():
+            for _ in range(5):
+                credit_tracking.record(cost="10", remaining="100")
+            return {"x": 1}
+
+        assert fn() == {"x": 1, "credit_cost": 50, "credit_remaining": 100}
+
+    def test_a_stale_value_from_a_previous_call_does_not_leak_in(self):
+        @with_credit_usage
+        def spends_credit():
+            credit_tracking.record(cost="10", remaining="100")
+            return {"x": 1}
+
+        @with_credit_usage
+        def spends_nothing():
+            return {"x": 2}
+
+        spends_credit()
+        assert spends_nothing() == {"x": 2}
+
+    def test_error_dict_from_handle_tool_errors_also_gets_credit_usage(self):
+        @with_credit_usage
+        @handle_tool_errors
+        def fn():
+            credit_tracking.record(cost="10", remaining="0")
+            raise ToolError("rate limited", status_code=429, error_type="upstream_api")
+
+        assert fn() == {
+            "error": "rate limited",
+            "status_code": 429,
+            "error_type": "upstream_api",
+            "credit_cost": 10,
+            "credit_remaining": 0,
+        }
+
+    def test_non_dict_result_is_passed_through_unmodified(self):
+        @with_credit_usage
+        def fn():
+            credit_tracking.record(cost="10", remaining="100")
+            return "not a dict"
+
+        assert fn() == "not a dict"
+
+    def test_preserves_function_name_and_docstring(self):
+        @with_credit_usage
+        def my_tool(x: int) -> dict:
+            """My tool docstring."""
+            return {"x": x}
+
+        assert my_tool.__name__ == "my_tool"
+        assert my_tool.__doc__ == "My tool docstring."

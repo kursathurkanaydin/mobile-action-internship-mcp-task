@@ -1,4 +1,4 @@
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.playstore.app_service import (
     fetch_app_by_track_id,
@@ -12,6 +12,7 @@ def _app_url(track_id: str) -> str:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en") -> dict:
     """Search Google Play by app name for candidate package ids.
@@ -44,6 +45,7 @@ def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en")
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
     """Look up a Google Play app's name and details by its package id or Play Store URL.
@@ -69,6 +71,7 @@ def get_playstore_app_name(track_id: str, lang_code: str = "en") -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_app_names_batch(track_ids: str, lang_code: str = "en") -> dict:
     """Look up names/details for MULTIPLE Google Play package ids in one request.

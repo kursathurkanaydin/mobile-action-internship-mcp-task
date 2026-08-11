@@ -1,4 +1,4 @@
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.playstore.keyword_service import (
     fetch_apps_for_keyword,
@@ -21,6 +21,7 @@ _ORGANIC_KEYWORDS_MAX_LIMIT = 1000
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_keyword_ranking(
     track_id: str,
@@ -47,6 +48,7 @@ def get_playstore_keyword_ranking(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_top_keywords(
     track_id: str,
@@ -70,6 +72,7 @@ def get_playstore_top_keywords(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_keyword_ranking_history(
     track_id: str,
@@ -96,6 +99,7 @@ def get_playstore_keyword_ranking_history(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_keyword_ranking_history_multi(
     track_id: str,
@@ -133,6 +137,7 @@ def get_playstore_keyword_ranking_history_multi(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Get metadata about a keyword on Google Play: search volume, popularity,
@@ -150,6 +155,7 @@ def get_playstore_keyword_metadata(country_code: str, keyword: str) -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """Get the list of apps that rank on Google Play for a given keyword.
@@ -168,6 +174,7 @@ def get_playstore_apps_for_keyword(country_code: str, keyword: str) -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_organic_keywords(
     track_id: str,
@@ -210,6 +217,7 @@ def get_playstore_organic_keywords(
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_organic_impression_share(keyword: str, country_code: str) -> dict:
     """Get a keyword's organic impression share distribution across competing apps on Google Play.
@@ -226,6 +234,7 @@ def get_playstore_organic_impression_share(keyword: str, country_code: str) -> d
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_playstore_share_of_category(keyword: str, country_code: str) -> dict:
     """Get the category distribution a keyword appears in on Google Play.

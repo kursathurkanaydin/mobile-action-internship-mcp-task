@@ -2,6 +2,7 @@ import logging
 
 import httpx
 
+from mcp_task import credit_tracking
 from mcp_task.config import MOBILEACTION_API_KEY, MOBILEACTION_BASE_URL
 from mcp_task.errors import ToolError
 
@@ -52,6 +53,7 @@ def _handle_response(response: httpx.Response, path: str) -> dict | list | None:
     credit_cost = response.headers.get("X-Credit-Cost")
     if credit_remaining is not None:
         logger.info("MobileAction call cost=%s remaining=%s path=%s", credit_cost, credit_remaining, path)
+        credit_tracking.record(credit_cost, credit_remaining)
 
     if response.status_code >= 400:
         message = _STATUS_MESSAGES.get(

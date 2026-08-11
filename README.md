@@ -23,7 +23,9 @@ JSON-RPC by hand.
 Credit costs below are the real `X-Credit-Cost` response header measured
 against the live API (one call per endpoint) — not estimates. They're flat
 per call, not per keyword (e.g. `get_keyword_ranking` costs 3 credits whether
-you pass one keyword or four).
+you pass one keyword or four). Every tool's actual response also carries its
+own `credit_cost`/`credit_remaining` live, not just this static table — see
+[Credit awareness](#credit-awareness).
 
 **Account**
 | Tool | Description | Credits/call |
@@ -326,6 +328,8 @@ credits.
 
 ```
 src/mcp_task/
+  errors.py           ToolError, handle_tool_errors, with_credit_usage
+  credit_tracking.py  contextvar go-between for with_credit_usage (see Credit awareness)
   clients/     raw HTTP clients (MobileAction, iTunes, unofficial Play scraper)
   services/    validation + fetch logic, reusable across tools
     appstore/    keyword_service.py, app_service.py (iTunes-backed)
@@ -382,14 +386,16 @@ Follow the same three-layer path every existing tool takes:
    call in `services/cache.py`'s `cached()` if the response is safe to cache
    — i.e. the inputs pin down a concrete/historical result, not "whatever is
    most recent right now."
-3. **Tool** (`tools/<store>/`) — a thin function stacking both decorators:
-   `@mcp.tool` outermost, `@handle_tool_errors` under it. The body just calls
-   the service and shapes its return value into the tool's response dict —
-   no try/except needed; `handle_tool_errors` catches `ToolError` (via
-   `to_error_response`) *and* anything unexpected (a malformed API response,
-   a third-party library edge case) so a bug never leaks a raw Python
-   exception to the model. Nothing else to wire up — `mcp_instance.py` finds
-   the tool automatically at startup.
+3. **Tool** (`tools/<store>/`) — a thin function stacking three decorators:
+   `@mcp.tool` outermost, then `@with_credit_usage`, then `@handle_tool_errors`
+   innermost. The body just calls the service and shapes its return value
+   into the tool's response dict — no try/except needed; `handle_tool_errors`
+   catches `ToolError` (via `to_error_response`) *and* anything unexpected (a
+   malformed API response, a third-party library edge case) so a bug never
+   leaks a raw Python exception to the model, and `with_credit_usage` attaches
+   the credits spent during the call to whatever dict comes out (see
+   [Credit awareness](#credit-awareness)). Nothing else to wire up —
+   `mcp_instance.py` finds the tool automatically at startup.
 
 Then mirror the same `<store>/` path under `tests/` for each layer you
 touched, and add a row to the relevant credits table + an entry in
@@ -413,7 +419,9 @@ that compares two stores rather than two apps on the same store.
 duplicate `@mcp.tool` function name anywhere under `tools/` fails the
 test suite instead of silently overwriting the registry entry at
 runtime) — same file also fails the suite if a new tool forgets
-`@handle_tool_errors` outside a `charts.py` file.
+`@handle_tool_errors` outside a `charts.py` file, or forgets
+`@with_credit_usage` (no exemption for that one — every tool, chart or not,
+must have it).
 
 ### Error handling
 
@@ -431,3 +439,29 @@ site when one subclass covers more than one situation — e.g.
 
 Not store-specific (like `tools/account.py` or `services/cache.py`)? Put it
 at the top level of `services/`/`tools/` instead of under a store folder.
+
+### Credit awareness
+
+Every tool's response — success or error — carries the credits that the call
+actually spent: `credit_cost` (an `int`, summed across every MobileAction API
+request the tool made) and `credit_remaining` (the account's balance after
+the last of those requests). A tool that fetches one thing (e.g.
+`get_keyword_ranking`) shows the cost of that one call; a tool that fans out
+to several apps/stores (e.g. `compare_keyword_ranking_history` across 5 apps)
+shows the *sum* of all of them, not just the last one — the field genuinely
+means "what this call cost you," not "what the last request cost." Neither
+field appears at all if the response was served from Redis cache (see
+[Setup](#setup)) — a cache hit spends zero credits, so there's nothing to
+report.
+
+This is implemented with minimal coupling between unrelated modules:
+`clients/mobileaction.py` (the producer, reading `X-Credit-Cost`/
+`X-Credit-Remaining` off the response) and `errors.py`'s `with_credit_usage`
+decorator (the consumer, merging it into the tool's response dict) don't
+import each other — both depend on a small, dependency-free go-between,
+`credit_tracking.py`, which just holds a `contextvars.ContextVar` (safe
+under FastMCP's concurrent tool calls, unlike a plain module global) with
+`reset()`/`record()`/`pop()`. `with_credit_usage` is a separate decorator
+from `handle_tool_errors` (see step 3 above) rather than folded into it, so
+it applies uniformly to every tool — including chart tools, which skip
+`handle_tool_errors` entirely.

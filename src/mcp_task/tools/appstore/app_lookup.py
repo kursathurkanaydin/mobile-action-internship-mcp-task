@@ -1,9 +1,10 @@
-from mcp_task.errors import handle_tool_errors
+from mcp_task.errors import handle_tool_errors, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_name, fetch_app_by_track_id, fetch_apps_by_track_ids
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_app_store_id(app_name: str, country: str = "us") -> dict:
     """Look up an app's numeric App Store id (trackId) by its name.
@@ -25,6 +26,7 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_app_name(track_id: int, country: str = "us") -> dict:
     """Look up an app's name and details by its numeric App Store id (trackId).
@@ -50,6 +52,7 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
 
 
 @mcp.tool
+@with_credit_usage
 @handle_tool_errors
 def get_app_names_batch(track_ids: str, country: str = "us") -> dict:
     """Look up names/details for MULTIPLE numeric App Store ids (trackIds) in one request.

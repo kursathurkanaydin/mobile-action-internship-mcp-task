@@ -76,3 +76,22 @@ class TestHandleToolErrorsCoverage:
             "@mcp.tool function(s) missing @handle_tool_errors (and not in "
             f"a charts.py file): {', '.join(f'{name} in {path}' for path, name in missing)}"
         )
+
+
+class TestWithCreditUsageCoverage:
+    def test_every_mcp_tool_function_surfaces_credit_usage(self):
+        # Every tool (data tool or chart tool) is expected to be wrapped
+        # with @with_credit_usage so the credit_cost/credit_remaining spent
+        # by the call is visible in the response, not just server logs -
+        # see errors.py's with_credit_usage docstring. Unlike
+        # @handle_tool_errors, there's no charts.py exemption here.
+        missing = [
+            (relative_path, name)
+            for relative_path, name, decorators in _iter_mcp_tool_functions()
+            if "with_credit_usage" not in decorators
+        ]
+
+        assert not missing, (
+            "@mcp.tool function(s) missing @with_credit_usage: "
+            f"{', '.join(f'{name} in {path}' for path, name in missing)}"
+        )

@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from mcp_task import credit_tracking
 from mcp_task.clients import mobileaction
 
 
@@ -10,6 +11,25 @@ class TestGetSuccess:
             mobileaction.httpx, "get", lambda *a, **k: fake_response(200, json_data={"ok": True})
         )
         assert mobileaction.get("/api-key") == {"ok": True}
+
+    def test_credit_headers_are_recorded_via_credit_tracking(self, monkeypatch, fake_response):
+        credit_tracking.reset()
+        headers = {"X-Credit-Cost": "10", "X-Credit-Remaining": "48230"}
+        monkeypatch.setattr(
+            mobileaction.httpx, "get", lambda *a, **k: fake_response(200, json_data={"ok": True}, headers=headers)
+        )
+        mobileaction.get("/path")
+
+        assert credit_tracking.pop() == {"credit_cost": 10, "credit_remaining": 48230}
+
+    def test_no_credit_headers_leaves_credit_tracking_untouched(self, monkeypatch, fake_response):
+        credit_tracking.reset()
+        monkeypatch.setattr(
+            mobileaction.httpx, "get", lambda *a, **k: fake_response(200, json_data={"ok": True})
+        )
+        mobileaction.get("/path")
+
+        assert credit_tracking.pop() is None
 
     def test_none_valued_params_are_dropped_before_request(self, monkeypatch, fake_response):
         captured = {}
@@ -117,6 +137,16 @@ class TestPostSuccess:
             mobileaction.httpx, "post", lambda *a, **k: fake_response(200, json_data={"ok": True})
         )
         assert mobileaction.post("/api-key") == {"ok": True}
+
+    def test_credit_headers_are_recorded_via_credit_tracking(self, monkeypatch, fake_response):
+        credit_tracking.reset()
+        headers = {"X-Credit-Cost": "20", "X-Credit-Remaining": "100"}
+        monkeypatch.setattr(
+            mobileaction.httpx, "post", lambda *a, **k: fake_response(200, json_data={"ok": True}, headers=headers)
+        )
+        mobileaction.post("/path")
+
+        assert credit_tracking.pop() == {"credit_cost": 20, "credit_remaining": 100}
 
     def test_json_body_is_forwarded_as_is(self, monkeypatch, fake_response):
         captured = {}

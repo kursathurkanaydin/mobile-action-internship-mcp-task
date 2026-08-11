@@ -2,7 +2,7 @@ from fastmcp.exceptions import ToolError as FastMCPToolError
 
 from mcp_task.charting.dashboard import COMPARE, render_dashboard_html, render_ranking_comparison_dashboard
 from mcp_task.charting.server import publish_html
-from mcp_task.errors import ToolError
+from mcp_task.errors import ToolError, with_credit_usage
 from mcp_task.mcp_instance import mcp
 from mcp_task.services.appstore.app_service import fetch_app_by_track_id
 from mcp_task.services.compare.keyword_service import fetch_keyword_ranking, fetch_keyword_ranking_history
@@ -41,6 +41,7 @@ def _rank_by_keyword(rankings: list[dict], keywords: list[str]) -> dict[str, int
 
 
 @mcp.tool
+@with_credit_usage
 def plot_compare_stores_keyword_ranking(
     app_store_track_id: int,
     playstore_track_id: str,
@@ -97,6 +98,7 @@ def plot_compare_stores_keyword_ranking(
 
 
 @mcp.tool
+@with_credit_usage
 def plot_compare_stores_keyword_ranking_history(
     app_store_track_id: int,
     playstore_track_id: str,

@@ -1,6 +1,8 @@
 import functools
 import logging
 
+from mcp_task import credit_tracking
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,5 +78,31 @@ def handle_tool_errors(fn):
         except Exception as exc:
             logger.exception("Unexpected error in tool %s", fn.__name__)
             return to_error_response(ToolError(f"Unexpected internal error: {exc}"))
+
+    return wrapper
+
+
+def with_credit_usage(fn):
+    """Wrap a @mcp.tool function to attach the credit_cost/credit_remaining spent during its call.
+
+    Stack this ABOVE @handle_tool_errors (i.e. @with_credit_usage over
+    @handle_tool_errors, both under @mcp.tool) so it sees the final
+    success-or-error dict rather than a raised exception - by the time this
+    runs, handle_tool_errors has already converted any exception into a
+    dict. For tools that skip handle_tool_errors entirely (chart tools,
+    which raise FastMCPToolError on failure instead of returning an error
+    dict), any exception simply propagates through this decorator
+    unmodified; credit_tracking.reset() at the start still prevents a
+    stale value from a previous call leaking into the next one either way.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        credit_tracking.reset()
+        result = fn(*args, **kwargs)
+        credit_usage = credit_tracking.pop()
+        if credit_usage is not None and isinstance(result, dict):
+            return {**result, **credit_usage}
+        return result
 
     return wrapper

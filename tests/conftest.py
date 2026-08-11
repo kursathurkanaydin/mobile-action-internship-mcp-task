@@ -5,11 +5,11 @@ import pytest
 class FakeResponse:
     """Minimal stand-in for httpx.Response covering only what the clients touch."""
 
-    def __init__(self, status_code=200, json_data=None, text=""):
+    def __init__(self, status_code=200, json_data=None, text="", headers=None):
         self.status_code = status_code
         self._json_data = json_data
         self.text = text
-        self.headers = {}
+        self.headers = headers or {}
 
     def json(self):
         if self._json_data is None:
