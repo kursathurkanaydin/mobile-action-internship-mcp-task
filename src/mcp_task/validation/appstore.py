@@ -7,7 +7,7 @@ def require_track_id(track_id: int) -> int:
     if track_id is None or track_id <= 0:
         raise InputValidationError(
             f"'{track_id}' is not a valid App Store track id — it must be a positive number "
-            "(e.g. 529479190). Use get_app_store_id to look one up by app name."
+            "(e.g. 529479190). Use get_appstore_id to look one up by app name."
         )
     return track_id
 

@@ -65,8 +65,8 @@ def fetch_keyword_ranking_history(
 ) -> list:
     """Validate inputs and fetch App Store keyword ranking history for a date range.
 
-    Shared by get_keyword_ranking_history, plot_keyword_ranking_history, and
-    compare_keyword_ranking_history so they stay in sync on request shape and
+    Shared by get_appstore_keyword_ranking_history, plot_appstore_keyword_ranking_history, and
+    compare_appstore_keyword_ranking_history so they stay in sync on request shape and
     validation. Raises InputValidationError on a bad input or
     MobileActionAPIError on failure; returns the raw list of per-day,
     per-device {trackId, keyword, rank, countryCode, date, appKind} entries.
@@ -121,7 +121,7 @@ def fetch_organic_keywords(track_id: int, country_code: str, device: str, date: 
     """Validate inputs and fetch the full organic keyword list for an app.
 
     limit isn't part of the cache key or the API call itself — the API
-    always returns the full list regardless, and the caller (get_organic_keywords)
+    always returns the full list regardless, and the caller (get_appstore_organic_keywords)
     caps/sorts it client-side after this returns. Costs 50 credits per live
     call, so this is the endpoint that benefits most from caching.
     """

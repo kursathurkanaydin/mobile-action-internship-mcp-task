@@ -148,7 +148,7 @@ class TestPlotCompareStoresKeywordRankingHistory:
         assert captured["series_label"] == "Store"
 
     def test_one_store_having_data_is_enough_not_to_fail(self, monkeypatch):
-        # matches the App Store's own compare_keyword_ranking_history precedent:
+        # matches the App Store's own compare_appstore_keyword_ranking_history precedent:
         # tolerate one side being empty, only fail if BOTH sides are empty
         monkeypatch.setattr(
             charts, "fetch_keyword_ranking_history", lambda *a: {"app_store": _APP_STORE_HISTORY, "play_store": []}

@@ -22,7 +22,7 @@ JSON-RPC by hand.
 
 Credit costs below are the real `X-Credit-Cost` response header measured
 against the live API (one call per endpoint) — not estimates. They're flat
-per call, not per keyword (e.g. `get_keyword_ranking` costs 3 credits whether
+per call, not per keyword (e.g. `get_appstore_keyword_ranking` costs 3 credits whether
 you pass one keyword or four). Every tool's actual response also carries its
 own `credit_cost`/`credit_remaining` live, not just this static table — see
 [Credit awareness](#credit-awareness).
@@ -35,12 +35,12 @@ own `credit_cost`/`credit_remaining` live, not just this static table — see
 **App Store Keyword Services** (MobileAction `/appstore-keyword-ranking/*`)
 | Tool | Description | Credits/call |
 |---|---|---|
-| `get_keyword_ranking` | Current rank for one or more keywords, one day. **Redis-cached for 24h** when a `date` is given (bonus) — an undated "most recent" query always fetches live. | 3, 0 on a cache hit |
-| `get_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
-| `get_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
-| `get_keyword_ranking_history` | Rank history for one keyword for an app over a date range. **Redis-cached for 24h** (bonus). | 10, 0 on a cache hit |
-| `get_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
-| `get_organic_keywords` | Full list of keywords an app organically ranks for. **Redis-cached for 24h** (bonus). | **50**, 0 on a cache hit |
+| `get_appstore_keyword_ranking` | Current rank for one or more keywords, one day. **Redis-cached for 24h** when a `date` is given (bonus) — an undated "most recent" query always fetches live. | 3, 0 on a cache hit |
+| `get_appstore_apps_for_keyword` | Which apps rank for a given keyword (competitor discovery). **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
+| `get_appstore_keyword_metadata` | Search volume/popularity for a keyword, independent of any app. **Redis-cached for 24h** (bonus). | 5, 0 on a cache hit |
+| `get_appstore_keyword_ranking_history` | Rank history for one keyword for an app over a date range. **Redis-cached for 24h** (bonus). | 10, 0 on a cache hit |
+| `get_appstore_top_keywords` | Keywords bringing an app the most search volume. **Redis-cached for 24h** (bonus). | 20, 0 on a cache hit |
+| `get_appstore_organic_keywords` | Full list of keywords an app organically ranks for. **Redis-cached for 24h** (bonus). | **50**, 0 on a cache hit |
 
 **Google Play Store Keyword Services** (MobileAction `/playstore-keyword-ranking/*`) —
 same shape as App Store above, except `track_id` is the app's package name
@@ -63,9 +63,9 @@ the same way.
 MobileAction's endpoints need a numeric `trackId` rather than an app name)
 | Tool | Description | Credits/call |
 |---|---|---|
-| `get_app_store_id` | Resolve an app name to its numeric App Store id. | Free (external API) |
-| `get_app_name` | Resolve a numeric App Store id back to its name. | Free (external API) |
-| `get_app_names_batch` | Resolve 1–300 numeric App Store ids to names in one request (limit configurable via `BATCH_LOOKUP_MAX_IDS`; e.g. the competitor trackIds from `get_apps_for_keyword`) instead of one call per id. | Free (external API) |
+| `get_appstore_id` | Resolve an app name to its numeric App Store id. | Free (external API) |
+| `get_appstore_name` | Resolve a numeric App Store id back to its name. | Free (external API) |
+| `get_appstore_names_batch` | Resolve 1–300 numeric App Store ids to names in one request (limit configurable via `BATCH_LOOKUP_MAX_IDS`; e.g. the competitor trackIds from `get_appstore_apps_for_keyword`) instead of one call per id. | Free (external API) |
 
 **Google Play lookup** — unlike the App Store, Google has no free public
 search API and MobileAction has no name→id search endpoint either (confirmed
@@ -78,7 +78,7 @@ as the keyword tools, since app details rarely change.
 `get_playstore_app_id` fills the search-by-name gap using the **unofficial**
 [`google-play-scraper`](https://pypi.org/project/google-play-scraper/) package
 (scrapes Play Store's search page — there's no official API to call instead).
-It's free but **not authoritative like `get_app_store_id`**: a known bug in
+It's free but **not authoritative like `get_appstore_id`**: a known bug in
 that library drops the id for Google's special "top card" result on an
 exact-name match, so the single most obvious app can be missing from the
 results. Treat its output as candidates to confirm with `get_playstore_app_name`,
@@ -106,9 +106,9 @@ Cost is just the underlying MobileAction call(s) they wrap — no extra charge
 for rendering.
 | Tool | Description | Credits/call |
 |---|---|---|
-| `plot_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_keyword_ranking`) |
-| `plot_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_keyword_ranking_history`) |
-| `compare_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
+| `plot_appstore_keyword_ranking` | Bar chart of one app's rank across several keywords. | 3 (same as `get_appstore_keyword_ranking`) |
+| `plot_appstore_keyword_ranking_history` | Line chart of one app's rank over time. | 10 (same as `get_appstore_keyword_ranking_history`) |
+| `compare_appstore_keyword_ranking_history` | Line chart comparing 2–5 apps' rank over time, same store. | 10 × number of apps (one history call per app) |
 | `plot_playstore_keyword_ranking_history` | Line chart of one Google Play app's rank over time, one keyword. No device toggle (Play Store has no iPhone/iPad split). | 10 (same as `get_playstore_keyword_ranking_history`) |
 | `plot_playstore_keyword_ranking_history_multi` | Line chart comparing one Google Play app's rank across 2–10 keywords over time. No device toggle (Play Store has no iPhone/iPad split). | 10 × number of keywords (one history call per keyword) |
 | `plot_compare_stores_keyword_ranking` | Grouped bar chart comparing one app's App Store vs Play Store rank, per keyword, one day. | 3 + 3 (same as `compare_stores_keyword_ranking`) |
@@ -118,47 +118,47 @@ for rendering.
 
 What each tool actually calls under the hood (`529479190` = Clash of Clans'
 trackId, `US` storefront, keyword `strategy`). The two chart tools that plot
-a single app/keyword (`plot_keyword_ranking`, `plot_keyword_ranking_history`)
-hit the exact same endpoints as `get_keyword_ranking` /
-`get_keyword_ranking_history` below — they just render the response as a
-chart instead of returning it raw; `compare_keyword_ranking_history` calls
-the `get_keyword_ranking_history` endpoint once per app being compared.
+a single app/keyword (`plot_appstore_keyword_ranking`, `plot_appstore_keyword_ranking_history`)
+hit the exact same endpoints as `get_appstore_keyword_ranking` /
+`get_appstore_keyword_ranking_history` below — they just render the response as a
+chart instead of returning it raw; `compare_appstore_keyword_ranking_history` calls
+the `get_appstore_keyword_ranking_history` endpoint once per app being compared.
 
 ```
 get_remaining_api_credits
   GET https://api.mobileaction.co/api-key?token=YOUR_API_KEY
 
-get_keyword_ranking
+get_appstore_keyword_ranking
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/keywordrankings
       ?keywords=strategy&token=YOUR_MOBILEACTION_API_KEY
 
-get_top_keywords
+get_appstore_top_keywords
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/top-keywords
       ?date=2026-07-01&token=YOUR_MOBILEACTION_API_KEY
 
-get_keyword_ranking_history
+get_appstore_keyword_ranking_history
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/strategy/keywordrankings
       ?startDate=2026-07-01&endDate=2026-07-15&token=YOUR_MOBILEACTION_API_KEY
 
-get_keyword_metadata
+get_appstore_keyword_metadata
   GET https://api.mobileaction.co/appstore-keyword-ranking/US/keyword-metadata
       ?keyword=strategy&token=YOUR_MOBILEACTION_API_KEY
 
-get_apps_for_keyword
+get_appstore_apps_for_keyword
   GET https://api.mobileaction.co/appstore-keyword-ranking/US/keyword-apps
       ?keyword=strategy&token=YOUR_MOBILEACTION_API_KEY
 
-get_organic_keywords
+get_appstore_organic_keywords
   GET https://api.mobileaction.co/appstore-keyword-ranking/529479190/US/IPHONE/organic-keywords
       ?date=2026-07-01&token=YOUR_MOBILEACTION_API_KEY
 
-get_app_store_id                                 (Apple's iTunes API, not MobileAction)
+get_appstore_id                                 (Apple's iTunes API, not MobileAction)
   GET https://itunes.apple.com/search?term=Clash+of+Clans&entity=software&country=us&limit=1
 
-get_app_name                                     (Apple's iTunes API, not MobileAction)
+get_appstore_name                                     (Apple's iTunes API, not MobileAction)
   GET https://itunes.apple.com/lookup?id=529479190&country=us
 
-get_app_names_batch                              (Apple's iTunes API, not MobileAction)
+get_appstore_names_batch                              (Apple's iTunes API, not MobileAction)
   GET https://itunes.apple.com/lookup?id=570060128,389801252,284882215&country=us
 ```
 
@@ -204,7 +204,7 @@ get_playstore_app_names_batch                    (MobileAction, unlike the free 
 `compare_stores_*` / `plot_compare_stores_*` tools call the matching App
 Store and Play Store endpoints above once each, in one call — e.g.
 `compare_stores_keyword_ranking(529479190, "com.supercell.clashofclans", "US", "clan")`
-hits the exact same two `get_keyword_ranking` / `get_playstore_keyword_ranking`
+hits the exact same two `get_appstore_keyword_ranking` / `get_playstore_keyword_ranking`
 URLs shown earlier, combined under `{"app_store": ..., "play_store": ...}`.
 
 ## Setup
@@ -416,11 +416,12 @@ collision before naming it** — tool names are global across the whole MCP
 server, not namespaced by Python module, and nothing catches a
 same-named `@mcp.tool` in a different file at import time (the second
 one silently replaces the first in FastMCP's registry, with only a
-runtime warning easy to miss). This bit us once already:
-`compare_keyword_ranking_history` already existed (App Store, comparing
-apps) before a cross-store tool was almost given the exact same name
-(comparing stores) — hence the `compare_stores_*` prefix for anything
-that compares two stores rather than two apps on the same store.
+runtime warning easy to miss). This bit us once already: an App Store tool
+comparing multiple apps (now named `compare_appstore_keyword_ranking_history`,
+but at the time just `compare_keyword_ranking_history`) already existed
+before a cross-store tool was almost given the exact same name (comparing
+stores) — hence the `compare_stores_*` prefix for anything that compares
+two stores rather than two apps on the same store.
 `tests/test_tool_registration.py` now catches this statically (a
 duplicate `@mcp.tool` function name anywhere under `tools/` fails the
 test suite instead of silently overwriting the registry entry at
@@ -452,8 +453,8 @@ Every tool's response — success or error — carries the credits that the call
 actually spent: `credit_cost` (an `int`, summed across every MobileAction API
 request the tool made) and `credit_remaining` (the account's balance after
 the last of those requests). A tool that fetches one thing (e.g.
-`get_keyword_ranking`) shows the cost of that one call; a tool that fans out
-to several apps/stores (e.g. `compare_keyword_ranking_history` across 5 apps)
+`get_appstore_keyword_ranking`) shows the cost of that one call; a tool that fans out
+to several apps/stores (e.g. `compare_appstore_keyword_ranking_history` across 5 apps)
 shows the *sum* of all of them, not just the last one — the field genuinely
 means "what this call cost you," not "what the last request cost." Neither
 field appears at all if the response was served from Redis cache (see

@@ -22,20 +22,20 @@ def _no_call(*args, **kwargs):
 class TestPlotKeywordRanking:
     def test_invalid_input_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
-            charts.plot_keyword_ranking(-1, "US", "clan,war")
+            charts.plot_appstore_keyword_ranking(-1, "US", "clan,war")
 
     def test_no_rankings_found_raises_fastmcp_tool_error(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: [])
 
         with pytest.raises(FastMCPToolError, match="No ranking data found"):
-            charts.plot_keyword_ranking(529479190, "US", "clan,war")
+            charts.plot_appstore_keyword_ranking(529479190, "US", "clan,war")
 
     def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_keyword_ranking", lambda *a: _RANKINGS)
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: "Clash of Clans")
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        result = charts.plot_keyword_ranking(529479190, "US", "clan,war")
+        result = charts.plot_appstore_keyword_ranking(529479190, "US", "clan,war")
         assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
 
     def test_dashboard_is_built_with_the_parsed_keyword_list(self, monkeypatch):
@@ -50,7 +50,7 @@ class TestPlotKeywordRanking:
         monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        charts.plot_keyword_ranking(529479190, "US", " clan , war ")
+        charts.plot_appstore_keyword_ranking(529479190, "US", " clan , war ")
         assert captured["keywords"] == ["clan", "war"]
 
     def test_snapshot_date_defaults_to_first_ranking_entrys_date_when_not_given(self, monkeypatch):
@@ -65,7 +65,7 @@ class TestPlotKeywordRanking:
         monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        charts.plot_keyword_ranking(529479190, "US", "clan,war")
+        charts.plot_appstore_keyword_ranking(529479190, "US", "clan,war")
         assert captured["snapshot_date"] == "2026-08-02"
 
     def test_snapshot_date_uses_the_requested_date_when_given(self, monkeypatch):
@@ -80,27 +80,27 @@ class TestPlotKeywordRanking:
         monkeypatch.setattr(charts, "render_keyword_ranking_dashboard", fake_render)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        charts.plot_keyword_ranking(529479190, "US", "clan,war", "2026-07-15")
+        charts.plot_appstore_keyword_ranking(529479190, "US", "clan,war", "2026-07-15")
         assert captured["snapshot_date"] == "2026-07-15"
 
 
 class TestPlotKeywordRankingHistory:
     def test_invalid_input_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
-            charts.plot_keyword_ranking_history(-1, "US", "strategy", "2026-07-01", "2026-07-05")
+            charts.plot_appstore_keyword_ranking_history(-1, "US", "strategy", "2026-07-01", "2026-07-05")
 
     def test_no_history_found_raises_fastmcp_tool_error(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: [])
 
         with pytest.raises(FastMCPToolError, match="No ranking history found"):
-            charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-05")
+            charts.plot_appstore_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-05")
 
     def test_success_returns_chart_url_from_publish_html(self, monkeypatch):
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        result = charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
+        result = charts.plot_appstore_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
         assert result == {"chart_url": "http://127.0.0.1:9/fake.html"}
 
     def test_dashboard_is_built_for_a_single_app(self, monkeypatch):
@@ -115,7 +115,7 @@ class TestPlotKeywordRankingHistory:
         monkeypatch.setattr(charts, "render_dashboard_html", fake_render)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        charts.plot_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
+        charts.plot_appstore_keyword_ranking_history(529479190, "US", "strategy", "2026-07-01", "2026-07-02")
         assert captured["histories_by_app"] == {"Clash of Clans": _HISTORY}
 
 
@@ -139,21 +139,21 @@ class TestResolveAppLabel:
 class TestCompareKeywordRankingHistory:
     def test_invalid_track_ids_raises_fastmcp_tool_error(self):
         with pytest.raises(FastMCPToolError):
-            charts.compare_keyword_ranking_history("111", "US", "strategy", "2026-07-01", "2026-07-05")
+            charts.compare_appstore_keyword_ranking_history("111", "US", "strategy", "2026-07-01", "2026-07-05")
 
     def test_more_than_five_apps_raises_fastmcp_tool_error_without_fetching(self, monkeypatch):
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", _no_call)
 
         with pytest.raises(FastMCPToolError, match="at most 5"):
-            charts.compare_keyword_ranking_history("1,2,3,4,5,6", "US", "strategy", "2026-07-01", "2026-07-05")
+            charts.compare_appstore_keyword_ranking_history("1,2,3,4,5,6", "US", "strategy", "2026-07-01", "2026-07-05")
 
     def test_exactly_five_apps_is_allowed(self, monkeypatch):
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        result = charts.compare_keyword_ranking_history("1,2,3,4,5", "US", "strategy", "2026-07-01", "2026-07-05")
+        result = charts.compare_appstore_keyword_ranking_history("1,2,3,4,5", "US", "strategy", "2026-07-01", "2026-07-05")
         assert result == {"dashboard_url": "http://127.0.0.1:9/fake.html"}
 
     def test_no_history_for_any_app_raises_fastmcp_tool_error(self, monkeypatch):
@@ -161,14 +161,14 @@ class TestCompareKeywordRankingHistory:
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: [])
 
         with pytest.raises(FastMCPToolError, match="No ranking history found"):
-            charts.compare_keyword_ranking_history("111,222", "US", "strategy", "2026-07-01", "2026-07-05")
+            charts.compare_appstore_keyword_ranking_history("111,222", "US", "strategy", "2026-07-01", "2026-07-05")
 
     def test_success_returns_dashboard_url_from_publish_html(self, monkeypatch):
         monkeypatch.setattr(charts, "_resolve_app_label", lambda track_id, country: f"App {track_id}")
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", lambda *a: _HISTORY)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        result = charts.compare_keyword_ranking_history("111,222", "US", "strategy", "2026-07-01", "2026-07-02")
+        result = charts.compare_appstore_keyword_ranking_history("111,222", "US", "strategy", "2026-07-01", "2026-07-02")
         assert result == {"dashboard_url": "http://127.0.0.1:9/fake.html"}
 
     def test_fetches_history_once_per_distinct_app(self, monkeypatch):
@@ -182,5 +182,5 @@ class TestCompareKeywordRankingHistory:
         monkeypatch.setattr(charts, "fetch_keyword_ranking_history", fake_fetch)
         monkeypatch.setattr(charts, "publish_html", lambda html_bytes: "http://127.0.0.1:9/fake.html")
 
-        charts.compare_keyword_ranking_history("111,222,333", "US", "strategy", "2026-07-01", "2026-07-02")
+        charts.compare_appstore_keyword_ranking_history("111,222,333", "US", "strategy", "2026-07-01", "2026-07-02")
         assert calls == [111, 222, 333]

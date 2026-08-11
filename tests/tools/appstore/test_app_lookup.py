@@ -7,7 +7,7 @@ class TestGetAppStoreId:
         fake_app = {"trackId": 529479190, "trackName": "Clash of Clans", "trackViewUrl": "https://example.test/coc"}
         monkeypatch.setattr(app_lookup, "fetch_app_by_name", lambda app_name, country: fake_app)
 
-        result = app_lookup.get_app_store_id("Clash of Clans", "us")
+        result = app_lookup.get_appstore_id("Clash of Clans", "us")
         assert result == {
             "app_id": 529479190,
             "name": "Clash of Clans",
@@ -20,7 +20,7 @@ class TestGetAppStoreId:
 
         monkeypatch.setattr(app_lookup, "fetch_app_by_name", raise_error)
 
-        result = app_lookup.get_app_store_id("nope", "us")
+        result = app_lookup.get_appstore_id("nope", "us")
         assert result["error"] == "No app found for 'nope' in storefront 'us'"
         assert result["status_code"] is None
 
@@ -30,7 +30,7 @@ class TestGetAppName:
         fake_app = {"trackId": 570060128, "trackName": "iMovie", "trackViewUrl": "https://example.test/imovie"}
         monkeypatch.setattr(app_lookup, "fetch_app_by_track_id", lambda track_id, country: fake_app)
 
-        result = app_lookup.get_app_name(570060128, "us")
+        result = app_lookup.get_appstore_name(570060128, "us")
         assert result == {
             "app_id": 570060128,
             "name": "iMovie",
@@ -43,7 +43,7 @@ class TestGetAppName:
 
         monkeypatch.setattr(app_lookup, "fetch_app_by_track_id", raise_error)
 
-        result = app_lookup.get_app_name(-5, "us")
+        result = app_lookup.get_appstore_name(-5, "us")
         assert "error" in result
 
 
@@ -55,7 +55,7 @@ class TestGetAppNamesBatch:
         ]
         monkeypatch.setattr(app_lookup, "fetch_apps_by_track_ids", lambda track_ids, country: ([1, 2], fake_apps))
 
-        result = app_lookup.get_app_names_batch("1,2", "us")
+        result = app_lookup.get_appstore_names_batch("1,2", "us")
         assert result == {
             "apps": [
                 {"app_id": 1, "name": "App One", "url": "https://example.test/1"},
@@ -70,7 +70,7 @@ class TestGetAppNamesBatch:
             app_lookup, "fetch_apps_by_track_ids", lambda track_ids, country: ([1, 2, 3], fake_apps)
         )
 
-        result = app_lookup.get_app_names_batch("1,2,3", "us")
+        result = app_lookup.get_appstore_names_batch("1,2,3", "us")
         assert result["not_found_ids"] == [2, 3]
         assert [app["app_id"] for app in result["apps"]] == [1]
 
@@ -80,5 +80,5 @@ class TestGetAppNamesBatch:
 
         monkeypatch.setattr(app_lookup, "fetch_apps_by_track_ids", raise_error)
 
-        result = app_lookup.get_app_names_batch("1,2,3", "us")
+        result = app_lookup.get_appstore_names_batch("1,2,3", "us")
         assert "error" in result

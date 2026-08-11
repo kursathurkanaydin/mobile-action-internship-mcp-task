@@ -6,7 +6,7 @@ from mcp_task.services.appstore.app_service import fetch_app_by_name, fetch_app_
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_app_store_id(app_name: str, country: str = "us") -> dict:
+def get_appstore_id(app_name: str, country: str = "us") -> dict:
     """Look up an app's numeric App Store id (trackId) by its name.
 
     MobileAction's endpoints require a numeric trackId rather than an app name,
@@ -28,15 +28,15 @@ def get_app_store_id(app_name: str, country: str = "us") -> dict:
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_app_name(track_id: int, country: str = "us") -> dict:
+def get_appstore_name(track_id: int, country: str = "us") -> dict:
     """Look up an app's name and details by its numeric App Store id (trackId).
 
     This is the reverse of get_app_id: use it when the user gives a trackId
     (e.g. from a MobileAction tool result) and asks what app it is.
 
     Do NOT call this once per id in a loop when you have TWO OR MORE trackIds
-    to resolve at once (e.g. the competitor list from get_apps_for_keyword) —
-    use get_app_names_batch instead; it resolves all of them in a single
+    to resolve at once (e.g. the competitor list from get_appstore_apps_for_keyword) —
+    use get_appstore_names_batch instead; it resolves all of them in a single
     request.
 
     Args:
@@ -54,13 +54,13 @@ def get_app_name(track_id: int, country: str = "us") -> dict:
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_app_names_batch(track_ids: str, country: str = "us") -> dict:
+def get_appstore_names_batch(track_ids: str, country: str = "us") -> dict:
     """Look up names/details for MULTIPLE numeric App Store ids (trackIds) in one request.
 
     This is the tool to call whenever you already have two or more numeric
     trackIds to resolve to names — most commonly the competitor list returned
-    by get_apps_for_keyword. Call this ONCE with all of them comma-separated;
-    do not call get_app_name once per id in a loop, since iTunes' lookup
+    by get_appstore_apps_for_keyword. Call this ONCE with all of them comma-separated;
+    do not call get_appstore_name once per id in a loop, since iTunes' lookup
     endpoint accepts a comma-joined id list directly and resolves all of them
     in a single HTTP request instead of N.
 

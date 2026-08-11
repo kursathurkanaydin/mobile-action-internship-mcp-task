@@ -13,7 +13,7 @@ from mcp_task.services.appstore.keyword_service import (
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_keyword_ranking(
+def get_appstore_keyword_ranking(
     track_id: int,
     country_code: str,
     keywords: str,
@@ -25,7 +25,7 @@ def get_keyword_ranking(
     Use this when the user asks things like "what rank does app X have for
     keyword Y in country Z" or "check keyword position". If the user wants to
     *see* the rankings across keywords as a chart rather than read the raw
-    numbers, use plot_keyword_ranking instead.
+    numbers, use plot_appstore_keyword_ranking instead.
 
     Args:
         track_id: The app's numeric App Store id (e.g. 529479190 for Clash of Clans).
@@ -41,7 +41,7 @@ def get_keyword_ranking(
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_top_keywords(
+def get_appstore_top_keywords(
     track_id: int,
     country_code: str,
     date: str,
@@ -53,7 +53,7 @@ def get_top_keywords(
     Returns a list of {keyword, searchVolume, rank} sorted by search volume,
     for a single day. Use this when the user asks things like "what keywords
     does app X get the most volume for" or "show top keywords for app X",
-    as opposed to checking one specific keyword (use get_keyword_ranking for that).
+    as opposed to checking one specific keyword (use get_appstore_keyword_ranking for that).
 
     Args:
         track_id: The app's numeric App Store id (e.g. 284882215 for Facebook).
@@ -69,7 +69,7 @@ def get_top_keywords(
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_keyword_ranking_history(
+def get_appstore_keyword_ranking_history(
     track_id: int,
     country_code: str,
     keyword: str,
@@ -83,10 +83,10 @@ def get_keyword_ranking_history(
     is the DEFAULT tool for any question about a keyword's trend over time —
     "how has app X's rank for keyword Y changed/trended/moved over the last
     month", "what's the trend", "list the daily ranks" — as opposed to a
-    single day's rank (use get_keyword_ranking for that). A question being
+    single day's rank (use get_appstore_keyword_ranking for that). A question being
     *about* a trend over time does NOT by itself mean the user wants a chart.
 
-    Only use plot_keyword_ranking_history instead if the request contains an
+    Only use plot_appstore_keyword_ranking_history instead if the request contains an
     EXPLICIT visual keyword: "chart", "graph", "plot", "visualize", "draw", or
     "show me a chart/graph/graphic". Plain trend/change wording like "nasıl
     değişmiş", "how has it changed", "what's the trend" — with no such
@@ -96,7 +96,7 @@ def get_keyword_ranking_history(
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare/vs/side-by-side for the same keyword (with or
     without asking for a "dashboard" or "chart"), use
-    compare_keyword_ranking_history instead; it fetches every app's history
+    compare_appstore_keyword_ranking_history instead; it fetches every app's history
     itself in one call and renders the comparison, which this tool cannot do.
 
     The date range should not exceed 30 days per request.
@@ -104,7 +104,7 @@ def get_keyword_ranking_history(
     AFTER presenting this data to the user, offer to visualize it: ask
     something like "Bunu bir grafikte görmek ister misin?" / "Want to see
     this as a chart instead?" — if they say yes, call
-    plot_keyword_ranking_history with the same track_id/country_code/keyword/
+    plot_appstore_keyword_ranking_history with the same track_id/country_code/keyword/
     start_date/end_date rather than re-fetching or restating the numbers.
 
     Args:
@@ -121,7 +121,7 @@ def get_keyword_ranking_history(
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_keyword_metadata(country_code: str, keyword: str) -> dict:
+def get_appstore_keyword_metadata(country_code: str, keyword: str) -> dict:
     """Get metadata about a keyword in the App Store: search volume, popularity,
     detected language, how many iPhone/iPad apps target it, and its brand app.
 
@@ -140,10 +140,10 @@ def get_keyword_metadata(country_code: str, keyword: str) -> dict:
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
+def get_appstore_apps_for_keyword(country_code: str, keyword: str) -> dict:
     """Get the list of apps that rank in the App Store for a given keyword.
 
-    This is the reverse of get_keyword_ranking / get_organic_keywords: instead
+    This is the reverse of get_appstore_keyword_ranking / get_appstore_organic_keywords: instead
     of asking "what keywords does my app rank for", it answers "which apps
     rank for this keyword". Use this for competitor discovery or to gauge how
     competitive a keyword is (e.g. "which apps show up for 'meditation'",
@@ -151,7 +151,7 @@ def get_apps_for_keyword(country_code: str, keyword: str) -> dict:
 
     The results only give numeric trackIds, not app names. If you need the
     names for two or more of them, resolve them all in ONE call with
-    get_app_names_batch — do not call get_app_name once per app in a loop.
+    get_appstore_names_batch — do not call get_appstore_name once per app in a loop.
 
     Args:
         country_code: Two-letter App Store country/storefront code, e.g. "US", "TR".
@@ -173,7 +173,7 @@ _ORGANIC_KEYWORDS_MAX_LIMIT = 1000
 @mcp.tool
 @with_credit_usage
 @handle_tool_errors
-def get_organic_keywords(
+def get_appstore_organic_keywords(
     track_id: int,
     country_code: str,
     device: str,
@@ -186,7 +186,7 @@ def get_organic_keywords(
     other keyword tools, so only call it when the user specifically asks for
     the full list of organic keywords for an app (e.g. "what keywords does app
     X organically rank for"), not for single-keyword lookups (use
-    get_keyword_ranking for that).
+    get_appstore_keyword_ranking for that).
 
     Large apps can rank for tens of thousands of keywords, so the response is
     capped and sorted by best (lowest) rank first; check total_count in the

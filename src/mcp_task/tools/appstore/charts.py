@@ -20,7 +20,7 @@ def _resolve_app_label(track_id: int, country_code: str) -> str:
 
 @mcp.tool
 @with_credit_usage
-def plot_keyword_ranking(
+def plot_appstore_keyword_ranking(
     track_id: int,
     country_code: str,
     keywords: str,
@@ -28,14 +28,14 @@ def plot_keyword_ranking(
 ) -> dict:
     """Show ONE app's current App Store ranking for one or more keywords as an interactive chart.
 
-    Same underlying data as get_keyword_ranking, drawn as a Chart.js bar chart
+    Same underlying data as get_appstore_keyword_ranking, drawn as a Chart.js bar chart
     (one bar per keyword, shortest bar = best rank) with an iPhone/iPad toggle
     button and a per-keyword breakdown table, instead of raw JSON. Use this
     when the user wants to *see* how an app ranks across several keywords at
     a glance (e.g. "chart app X's ranking for these keywords", "visualize app
     X's keyword rankings"), as opposed to a single keyword's trend over time
-    (use plot_keyword_ranking_history for that) or comparing apps (use
-    compare_keyword_ranking_history for that). This is a single-day snapshot,
+    (use plot_appstore_keyword_ranking_history for that) or comparing apps (use
+    compare_appstore_keyword_ranking_history for that). This is a single-day snapshot,
     not a trend.
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
@@ -73,7 +73,7 @@ def plot_keyword_ranking(
 
 @mcp.tool
 @with_credit_usage
-def plot_keyword_ranking_history(
+def plot_appstore_keyword_ranking_history(
     track_id: int,
     country_code: str,
     keyword: str,
@@ -82,7 +82,7 @@ def plot_keyword_ranking_history(
 ) -> dict:
     """Render ONE app's App Store ranking history for a keyword as an interactive chart.
 
-    Same underlying data as get_keyword_ranking_history, drawn as a live
+    Same underlying data as get_appstore_keyword_ranking_history, drawn as a live
     Chart.js line chart with an iPhone/iPad toggle button (hover a point for
     its exact date/rank) instead of raw JSON.
 
@@ -93,14 +93,14 @@ def plot_keyword_ranking_history(
     trend/change wording with NO such keyword — "how has app X's rank
     changed", "nasıl değişmiş", "what's the trend", "how did it move over
     time" — is NOT enough by itself; that default case is
-    get_keyword_ranking_history's job, not this tool's, even though asking
+    get_appstore_keyword_ranking_history's job, not this tool's, even though asking
     "how has X changed" is inherently about a trend over time. When in doubt
-    (no explicit visual keyword), prefer get_keyword_ranking_history. The
+    (no explicit visual keyword), prefer get_appstore_keyword_ranking_history. The
     date range should not exceed 30 days per request.
 
     Do NOT call this once per app to compare multiple apps — if the user gives
     two or more apps to compare (vs, side-by-side, "which one ranks better"),
-    use compare_keyword_ranking_history instead; it produces one combined
+    use compare_appstore_keyword_ranking_history instead; it produces one combined
     dashboard rather than separate charts you'd have to describe yourself.
 
     Returns a clickable URL (served from a local, loopback-only HTTP server)
@@ -138,7 +138,7 @@ def plot_keyword_ranking_history(
 
 @mcp.tool
 @with_credit_usage
-def compare_keyword_ranking_history(
+def compare_appstore_keyword_ranking_history(
     track_ids: str,
     country_code: str,
     keyword: str,
@@ -152,11 +152,11 @@ def compare_keyword_ranking_history(
     ranking for keyword Z", "app X vs app Y for keyword Z", "how do my top 3
     competitors rank for this keyword", "build/show me a dashboard comparing
     these apps' rankings" — with or without the word "dashboard" or "chart"
-    in the request. For a single app's trend, use plot_keyword_ranking_history
-    or get_keyword_ranking_history instead.
+    in the request. For a single app's trend, use plot_appstore_keyword_ranking_history
+    or get_appstore_keyword_ranking_history instead.
 
     Call this ONCE with all the apps' track_ids together — do not call
-    get_keyword_ranking_history or plot_keyword_ranking_history separately for
+    get_appstore_keyword_ranking_history or plot_appstore_keyword_ranking_history separately for
     each app and combine the results yourself; this tool fetches every app's
     history and renders the comparison chart + dashboard in one step, which
     those single-app tools cannot do.

@@ -43,7 +43,7 @@ def compare_stores_keyword_ranking(
     Needs the SAME app's id on both stores — there's no automatic mapping
     between an App Store trackId and a Play Store package id, so both must
     be given explicitly. If you only have a name, resolve it first with
-    get_app_store_id (App Store, authoritative search) and
+    get_appstore_id (App Store, authoritative search) and
     get_playstore_app_id/get_playstore_app_name (Play Store — no real
     search exists, see get_playstore_app_id's docstring). This is a
     single-day snapshot; for a trend over time use

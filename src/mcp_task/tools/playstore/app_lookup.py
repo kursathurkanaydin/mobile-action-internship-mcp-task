@@ -30,7 +30,7 @@ def get_playstore_app_id(query: str, country: str = "us", lang_code: str = "en")
 
     Treat "apps" as CANDIDATES to confirm by name — do not assume the first
     result is the right one and feed it straight into other tools. This is
-    unlike get_app_store_id, which is backed by Apple's real search API and
+    unlike get_appstore_id, which is backed by Apple's real search API and
     can be trusted directly.
 
     Args:
